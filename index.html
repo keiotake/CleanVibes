@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌟 CleanVibes活動記録</title>
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --sky: #e8f4fd;
+            --ocean: #0ea5e9;
+            --deep: #0369a1;
+            --mint: #d1fae5;
+            --green: #10b981;
+            --white: #ffffff;
+            --gray-50: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-400: #94a3b8;
+            --gray-600: #475569;
+            --gray-800: #1e293b;
+            --gold: #f59e0b;
+            --silver: #94a3b8;
+            --bronze: #d97706;
+            --danger: #ef4444;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: 'Zen Kaku Gothic New', sans-serif;
+            background: var(--sky); color: var(--gray-800); min-height: 100vh;
+            background-image:
+                radial-gradient(ellipse at 10% 10%, rgba(14,165,233,0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 90% 80%, rgba(16,185,129,0.06) 0%, transparent 60%);
+        }
+        header { background: var(--white); border-bottom: 3px solid var(--ocean); position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 20px rgba(14,165,233,0.12); }
+        .header-inner { max-width: 960px; margin: 0 auto; padding: 14px 20px; display: flex; align-items: center; gap: 12px; }
+        .header-title { font-weight: 900; font-size: 1.4rem; color: var(--deep); }
+        .header-sub { font-family: 'Space Mono', monospace; font-size: 0.7rem; color: var(--ocean); background: var(--sky); padding: 2px 8px; border-radius: 20px; border: 1px solid var(--ocean); }
+        .header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+        .sync-indicator { font-size: 0.7rem; color: var(--gray-400); display: flex; align-items: center; gap: 4px; }
+        .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); display: inline-block; }
+        .sync-dot.loading { background: var(--gold); animation: pulse 1s infinite; }
+        .sync-dot.error { background: var(--danger); }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+        .header-count { font-weight: 700; font-size: 0.85rem; color: var(--gray-600); white-space: nowrap; }
+        .count-num { font-family: 'Space Mono', monospace; font-size: 1.2rem; color: var(--ocean); font-weight: 700; }
+        .tabs { max-width: 960px; margin: 0 auto; padding: 18px 20px 0; display: flex; gap: 4px; }
+        .tab { padding: 10px 20px; border: 2px solid var(--gray-200); border-bottom: none; background: var(--white); color: var(--gray-600); border-radius: 10px 10px 0 0; font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+        .tab:hover { color: var(--ocean); }
+        .tab.active { color: var(--ocean); border-color: var(--ocean); position: relative; }
+        .tab.active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 2px; background: var(--white); }
+        .bottom-nav { display: none; }
+        .main { max-width: 960px; margin: 0 auto; padding: 0 20px 40px; }
+        .panel { background: var(--white); border-radius: 0 12px 12px 12px; border: 2px solid var(--ocean); padding: 24px; display: none; }
+        .panel.active { display: block; }
+        .card { background: var(--gray-50); border: 1.5px solid var(--gray-200); border-radius: 12px; padding: 18px; margin-bottom: 10px; transition: all 0.2s; position: relative; }
+        .card:hover { border-color: var(--ocean); box-shadow: 0 4px 16px rgba(14,165,233,0.1); transform: translateY(-1px); }
+        .card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+        .card-date { font-family: 'Space Mono', monospace; font-size: 0.75rem; color: var(--white); background: var(--ocean); padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+        .card-location { font-weight: 700; font-size: 0.95rem; }
+        .card-meta { font-size: 0.85rem; color: var(--gray-600); line-height: 1.7; }
+        .tag { display: inline-block; background: var(--mint); color: var(--green); border-radius: 6px; padding: 2px 8px; font-size: 0.75rem; font-weight: 700; margin-right: 4px; margin-top: 4px; }
+        .edit-btn { background: none; border: 1.5px solid var(--gray-200); border-radius: 6px; width: 32px; height: 32px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+        .edit-btn:hover { border-color: var(--ocean); background: var(--sky); }
+        .delete-btn { position: absolute; top: 12px; right: 12px; background: none; border: 1.5px solid var(--gray-200); border-radius: 6px; width: 32px; height: 32px; cursor: pointer; font-size: 0.9rem; color: var(--gray-400); transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+        .delete-btn:hover { border-color: var(--danger); color: var(--danger); background: #fef2f2; }
+        .form-section { margin-bottom: 20px; padding: 18px; background: var(--sky); border-radius: 12px; border: 2px dashed var(--ocean); }
+        .form-title { font-weight: 900; font-size: 1rem; color: var(--deep); margin-bottom: 14px; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .form-group { display: flex; flex-direction: column; gap: 5px; }
+        .form-group.full { grid-column: 1 / -1; }
+        label { font-size: 0.8rem; font-weight: 700; color: var(--deep); }
+        input, textarea, select { padding: 11px 14px; border: 1.5px solid var(--gray-200); border-radius: 8px; font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 1rem; color: var(--gray-800); background: var(--white); outline: none; transition: border-color 0.2s; }
+        input:focus, textarea:focus { border-color: var(--ocean); box-shadow: 0 0 0 3px rgba(14,165,233,0.1); }
+        textarea { resize: vertical; min-height: 70px; }
+        .btn { padding: 12px 22px; border: none; border-radius: 8px; font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+        .btn-primary { background: var(--ocean); color: var(--white); }
+        .btn-primary:hover { background: var(--deep); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(14,165,233,0.3); }
+        .btn-primary:disabled { background: var(--gray-400); transform: none; box-shadow: none; cursor: not-allowed; }
+        .btn-secondary { background: var(--gray-100); color: var(--gray-600); border: 1.5px solid var(--gray-200); margin-left: 8px; }
+        .btn-secondary:hover { background: var(--gray-200); }
+        .form-actions { margin-top: 14px; display: flex; }
+        .add-toggle-btn { width: 100%; padding: 15px; background: var(--white); border: 2px dashed var(--ocean); border-radius: 12px; color: var(--ocean); font-family: 'Zen Kaku Gothic New', sans-serif; font-weight: 700; font-size: 1rem; cursor: pointer; margin-bottom: 14px; transition: all 0.2s; }
+        .add-toggle-btn:hover { background: var(--sky); }
+        .checkbox-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+        .checkbox-label { display: inline-flex; align-items: center; gap: 5px; background: var(--white); border: 1.5px solid var(--gray-200); border-radius: 8px; padding: 8px 14px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; }
+        .checkbox-label:has(input:checked) { border-color: var(--ocean); background: var(--sky); color: var(--deep); font-weight: 700; }
+        .checkbox-label input { display: none; }
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
+        .stat-card { background: var(--white); border: 1.5px solid var(--gray-200); border-radius: 12px; padding: 18px; text-align: center; }
+        .stat-num { font-family: 'Space Mono', monospace; font-size: 2rem; font-weight: 700; color: var(--ocean); }
+        .stat-label { font-size: 0.8rem; color: var(--gray-600); margin-top: 4px; }
+        .ranking-title { font-weight: 900; font-size: 1rem; color: var(--deep); margin-bottom: 10px; }
+        .rank-item { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--gray-50); border-radius: 10px; margin-bottom: 8px; border: 1.5px solid var(--gray-200); }
+        .rank-badge { font-family: 'Space Mono', monospace; font-size: 1.2rem; font-weight: 700; width: 30px; text-align: center; }
+        .rank-1 { color: var(--gold); } .rank-2 { color: var(--silver); } .rank-3 { color: var(--bronze); } .rank-n { color: var(--gray-400); font-size: 0.85rem; }
+        .rank-name { font-weight: 700; flex: 1; }
+        .rank-count { font-family: 'Space Mono', monospace; font-weight: 700; color: var(--ocean); font-size: 1.1rem; }
+        .rank-item-inner { flex: 1; }
+        .rank-bar-bg { height: 4px; background: var(--gray-200); border-radius: 2px; margin-top: 4px; }
+        .rank-bar { height: 4px; background: linear-gradient(90deg, var(--ocean), var(--green)); border-radius: 2px; transition: width 0.6s ease; }
+        .member-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+        .member-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--sky); border: 1.5px solid var(--ocean); border-radius: 20px; padding: 7px 14px; font-size: 0.85rem; font-weight: 700; color: var(--deep); }
+        .member-chip button { background: none; border: none; cursor: pointer; color: var(--gray-400); font-size: 0.8rem; padding: 0; transition: color 0.2s; }
+        .member-chip button:hover { color: var(--danger); }
+        .member-add-row { display: flex; gap: 8px; }
+        .member-add-row input { flex: 1; }
+        .empty { text-align: center; padding: 40px 20px; color: var(--gray-400); }
+        .empty-icon { font-size: 3rem; margin-bottom: 8px; }
+        .empty-text { font-size: 0.9rem; line-height: 1.8; }
+        .toast { position: fixed; bottom: 24px; right: 24px; background: var(--deep); color: var(--white); padding: 12px 20px; border-radius: 10px; font-weight: 700; font-size: 0.9rem; transform: translateY(80px); opacity: 0; transition: all 0.3s; z-index: 1000; box-shadow: 0 8px 24px rgba(3,105,161,0.3); }
+        .toast.show { transform: translateY(0); opacity: 1; }
+
+        /* 写真関連 */
+        .photo-input-area { margin-top: 8px; }
+        .photo-input-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--white); border: 1.5px solid var(--ocean); border-radius: 8px; padding: 10px 16px; color: var(--ocean); font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; }
+        .photo-input-btn:hover { background: var(--sky); }
+        .photo-input-btn input { display: none; }
+        .photo-preview { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .photo-preview-item { position: relative; width: 80px; height: 80px; border-radius: 8px; overflow: hidden; border: 1.5px solid var(--gray-200); }
+        .photo-preview-item img { width: 100%; height: 100%; object-fit: cover; }
+        .photo-preview-item .remove-photo { position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; border-radius: 50%; background: rgba(0,0,0,0.6); color: white; border: none; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+        .photo-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+        .photo-grid img { width: 120px; height: 90px; object-fit: cover; border-radius: 8px; cursor: pointer; transition: transform 0.2s; border: 1.5px solid var(--gray-200); }
+        .photo-grid img:hover { transform: scale(1.05); border-color: var(--ocean); }
+        .lightbox { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); z-index: 9999; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .lightbox img { max-width: 95%; max-height: 90vh; border-radius: 8px; object-fit: contain; }
+        .lightbox-close { position: absolute; top: 16px; right: 20px; color: white; font-size: 2rem; cursor: pointer; background: none; border: none; }
+        .upload-progress { margin-top: 8px; font-size: 0.8rem; color: var(--ocean); font-weight: 700; }
+
+        @media (max-width: 640px) {
+            .header-inner { padding: 10px 14px; gap: 8px; }
+            .header-title { font-size: 1rem; }
+            .header-sub { display: none; }
+            .header-count { font-size: 0.75rem; }
+            .count-num { font-size: 1rem; }
+            .tabs { display: none; }
+            .main { padding: 10px 10px 90px; }
+            .panel { border-radius: 12px; padding: 14px; border: none; box-shadow: 0 2px 12px rgba(14,165,233,0.08); }
+            .bottom-nav { display: flex; position: fixed; bottom: 0; left: 0; right: 0; background: var(--white); border-top: 2px solid var(--ocean); z-index: 200; box-shadow: 0 -4px 20px rgba(14,165,233,0.12); }
+            .bottom-nav button { flex: 1; padding: 10px 4px 16px; background: none; border: none; font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 0.65rem; font-weight: 700; color: var(--gray-400); cursor: pointer; transition: color 0.2s; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+            .bottom-nav button .nav-icon { font-size: 1.5rem; line-height: 1; transition: transform 0.2s; }
+            .bottom-nav button.active { color: var(--ocean); }
+            .bottom-nav button.active .nav-icon { transform: scale(1.2); }
+            input, textarea, select { font-size: 1rem; padding: 12px 14px; }
+            .form-grid { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+            .stat-card { padding: 12px 8px; } .stat-num { font-size: 1.5rem; } .stat-label { font-size: 0.72rem; }
+            .btn { padding: 13px 18px; font-size: 1rem; }
+            .add-toggle-btn { padding: 16px; font-size: 1rem; }
+            .form-section { padding: 14px; }
+            .delete-btn { width: 36px; height: 36px; }
+            .member-add-row { flex-direction: column; }
+            .member-add-row .btn { width: 100%; }
+            .toast { bottom: 80px; right: 10px; left: 10px; text-align: center; }
+            .checkbox-label { padding: 9px 14px; font-size: 0.9rem; }
+            .member-chip { padding: 8px 14px; font-size: 0.88rem; }
+            .card { padding: 14px; } .card-meta { font-size: 0.88rem; }
+            .photo-grid img { width: 90px; height: 68px; }
+        }
+        #edit-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 300; align-items: center; justify-content: center; }
+        .modal-content { background: var(--white); border-radius: 12px; padding: 24px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-inner">
+            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAAACtWK6eAAABCGlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGA8wQAELAYMDLl5JUVB7k4KEZFRCuwPGBiBEAwSk4sLGHADoKpv1yBqL+viUYcLcKakFicD6Q9ArFIEtBxopAiQLZIOYWuA2EkQtg2IXV5SUAJkB4DYRSFBzkB2CpCtkY7ETkJiJxcUgdT3ANk2uTmlyQh3M/Ck5oUGA2kOIJZhKGYIYnBncAL5H6IkfxEDg8VXBgbmCQixpJkMDNtbGRgkbiHEVBYwMPC3MDBsO48QQ4RJQWJRIliIBYiZ0tIYGD4tZ2DgjWRgEL7AwMAVDQsIHG5TALvNnSEfCNMZchhSgSKeDHkMyQx6QJYRgwGDIYMZAKbWPz9HbOBQAABYe0lEQVR42u29d5xcV3n//37OuXf6dmnVi2XLsiUXbMDGYLCckEBCMIQgBUJIxyGhffP9QgIprJTkl9BJ6CUklBCCREIoCRCKJWPAxtgY23K31etq++40e895fn/cO7MrWbJla1dayfP4Ndbu7O7M3HPP5zz980BLWtKSlrSkJS1pSUta0pKWtKQlLWlJS1rSkpa0pCUtaUlLWtKSlrSkJS1pSUta0pKWtKQlLWlJS1rSkrNY/n/2uLfsjOhKGAAAAABJRU5ErkJggg==" alt="logo" style="height: 40px;">
+            <div>
+                <div class="header-title">CleanVibes活動記録</div>
+                <div class="header-sub">年末の王様は誰だ</div>
+            </div>
+            <div class="header-right">
+                <button id="admin-btn" onclick="toggleAdmin()" style="background: none; border: 1.5px solid var(--gray-200); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-weight: 700; color: var(--gray-400); transition: all 0.2s;">🔒 管理者</button>
+                <div class="sync-indicator">
+                    <span id="sync-label">同期済み</span>
+                    <span id="sync-dot" class="sync-dot"></span>
+                </div>
+                <div class="header-count">今年 <span id="header-count" class="count-num">0</span> 回</div>
+            </div>
+        </div>
+    </header>
+
+    <div class="tabs">
+        <button class="tab active" onclick="switchTab('records')">📝活動記録</button>
+        <button class="tab" onclick="switchTab('members')">👥メンバー</button>
+        <button class="tab" onclick="switchTab('stats')">📊集計</button>
+    </div>
+
+    <div class="main">
+        <!-- Records Panel -->
+        <div id="panel-records" class="panel active">
+            <div style="margin-bottom: 14px; display: flex; gap: 8px;">
+                <button id="add-toggle" onclick="toggleAddForm()" class="add-toggle-btn">➕ 記録を追加</button>
+                <button id="sort-btn" onclick="toggleSort()" style="background: var(--ocean); color: var(--white); border: none; border-radius: 8px; padding: 12px 22px; font-family: 'Zen Kaku Gothic New', sans-serif; font-weight: 700; cursor: pointer;">🔽 新しい順</button>
+            </div>
+            <form id="add-form" style="display: none;">
+                <div class="form-section">
+                    <div class="form-title">✨ 活動記録を追加</div>
+                    <div class="form-grid">
+                        <div class="form-group"><label>📅 日時 *</label><input id="f-date" type="date" required></div>
+                        <div class="form-group"><label>📍 場所 *</label><input id="f-place" type="text" placeholder="例: 〇〇公園" required></div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group full"><label>👥 参加メンバー *</label><div id="member-checkboxes" class="checkbox-group"></div></div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group full"><label>🧹 作業内容 *</label><textarea id="f-work" placeholder="清掃内容を記入してください" required></textarea></div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group full"><label>📝 その他（メモ）</label><textarea id="f-memo" placeholder="特記事項があればここに記入"></textarea></div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group full">
+                            <label>📷 写真（最大5枚）</label>
+                            <div class="photo-input-area">
+                                <label class="photo-input-btn">📷 写真を選択<input id="f-photos" type="file" accept="image/*" multiple></label>
+                            </div>
+                            <div id="f-photo-preview" class="photo-preview"></div>
+                            <div id="f-upload-progress" class="upload-progress" style="display:none;"></div>
+                        </div>
+                    </div>
+                    <div class="form-actions">
+                        <button id="submit-btn" type="button" class="btn btn-primary" onclick="addRecord()">➕ 記録を追加</button>
+                        <button type="button" class="btn btn-secondary" onclick="toggleAddForm()">キャンセル</button>
+                    </div>
+                </div>
+            </form>
+            <div id="records-list"></div>
+        </div>
+
+        <!-- Members Panel -->
+        <div id="panel-members" class="panel">
+            <div class="form-section">
+                <div class="form-title">➕ 新しいメンバーを追加</div>
+                <div class="member-add-row">
+                    <input id="new-member" type="text" placeholder="メンバー名を入力">
+                    <button class="btn btn-primary" onclick="addMember()">➕ 追加</button>
+                </div>
+            </div>
+            <div id="member-list" class="member-list"></div>
+        </div>
+
+        <!-- Stats Panel -->
+        <div id="panel-stats" class="panel">
+            <div class="stats-grid">
+                <div class="stat-card"><div class="stat-num" id="st-total">0</div><div class="stat-label">総活動回数</div></div>
+                <div class="stat-card"><div class="stat-num" id="st-year">0</div><div class="stat-label">今年の活動回数</div></div>
+                <div class="stat-card"><div class="stat-num" id="st-members">0</div><div class="stat-label">登録メンバー数</div></div>
+            </div>
+            <div class="ranking-title">🏆 メンバー別参加回数ランキング（今年）</div>
+            <div id="ranking-list"></div>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <button class="active" onclick="switchTab('records')" style="border-right: 1px solid var(--gray-200);"><span class="nav-icon">📝</span>活動記録</button>
+        <button onclick="switchTab('members')" style="border-right: 1px solid var(--gray-200);"><span class="nav-icon">👥</span>メンバー</button>
+        <button onclick="switchTab('stats')"><span class="nav-icon">📊</span>集計</button>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="edit-modal">
+        <div class="modal-content">
+            <div class="form-title" style="margin-bottom: 20px;">✏️ 記録を編集</div>
+            <div class="form-grid">
+                <div class="form-group"><label>📅 日付 *</label><input id="e-date" type="date" required></div>
+                <div class="form-group"><label>📍 場所 *</label><input id="e-place" type="text" required></div>
+            </div>
+            <div class="form-grid">
+                <div class="form-group full"><label>👥 参加メンバー *</label><div id="e-member-checkboxes" class="checkbox-group"></div></div>
+            </div>
+            <div class="form-grid">
+                <div class="form-group full"><label>🧹 作業内容 *</label><textarea id="e-work" required></textarea></div>
+            </div>
+            <div class="form-grid">
+                <div class="form-group full"><label>📝 その他（メモ）</label><textarea id="e-memo"></textarea></div>
+            </div>
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>📷 写真</label>
+                    <div id="e-existing-photos" class="photo-preview"></div>
+                    <div class="photo-input-area" style="margin-top:8px;">
+                        <label class="photo-input-btn">📷 写真を追加<input id="e-photos" type="file" accept="image/*" multiple></label>
+                    </div>
+                    <div id="e-photo-preview" class="photo-preview"></div>
+                    <div id="e-upload-progress" class="upload-progress" style="display:none;"></div>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button class="btn btn-primary" onclick="saveEdit()">💾 保存</button>
+                <button class="btn btn-secondary" onclick="closeEdit()">キャンセル</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        const GAS_URL = 'https://script.google.com/macros/s/AKfycbyCHg6qLzpttcBDAAiAIFxBCreZ4ZVk0WdEQ-YVGNWMKYooWY4Wgsti2gGWSdZTRvVK0Q/exec';
+
+        let state = { records: [], members: [] };
+        let editingId = null;
+        let sortOrder = 'desc';
+        const ADMIN_PASSWORD = 'Clean Vibes';
+        let isAdmin = false;
+        let pendingPhotos = [];
+        let editPendingPhotos = [];
+        let editExistingPhotos = [];
+
+        // === 同期状態 ===
+        function setSyncStatus(s) {
+            const dot = document.getElementById('sync-dot');
+            const label = document.getElementById('sync-label');
+            dot.className = 'sync-dot' + (s === 'loading' ? ' loading' : s === 'error' ? ' error' : '');
+            label.textContent = s === 'loading' ? '同期中…' : s === 'error' ? 'エラー' : '同期済み';
+        }
+
+        // === クラウド読み込み ===
+        function loadFromCloud() {
+            setSyncStatus('loading');
+            return new Promise((resolve) => {
+                const callbackName = 'gasCallback_' + Date.now();
+                window[callbackName] = function(data) {
+                    try {
+                        if (data && Array.isArray(data.records) && Array.isArray(data.members)) {
+                            state = data;
+                        }
+                        setSyncStatus('ok');
+                    } catch(e) { setSyncStatus('error'); }
+                    if (script.parentNode) document.head.removeChild(script);
+                    delete window[callbackName];
+                    renderAll();
+                    resolve();
+                };
+                const script = document.createElement('script');
+                script.src = GAS_URL + '?callback=' + callbackName + '&t=' + Date.now();
+                script.onerror = function() {
+                    setSyncStatus('error');
+                    showToast('⚠️ データの読み込みに失敗しました');
+                    if (script.parentNode) document.head.removeChild(script);
+                    delete window[callbackName];
+                    renderAll();
+                    resolve();
+                };
+                document.head.appendChild(script);
+            });
+        }
+
+        // === クラウド保存 ===
+        async function saveToCloud() {
+            setSyncStatus('loading');
+            try {
+                const params = new URLSearchParams();
+                params.append('data', JSON.stringify(state));
+                await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
+                setSyncStatus('ok');
+            } catch(e) {
+                setSyncStatus('error');
+                showToast('⚠️ 保存に失敗しました');
+            }
+        }
+
+        // === 写真リサイズ ===
+        function resizeImage(file, maxWidth, quality) {
+            maxWidth = maxWidth || 1200;
+            quality = quality || 0.7;
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        let w = img.width, h = img.height;
+                        if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+                        canvas.width = w; canvas.height = h;
+                        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                        resolve(canvas.toDataURL('image/jpeg', quality));
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // === 写真アップロード ===
+        function uploadImageToCloud(base64Data, uploadId) {
+            return new Promise(async (resolve, reject) => {
+                try {
+                    const params = new URLSearchParams();
+                    params.append('action', 'upload_image');
+                    params.append('image', base64Data);
+                    params.append('uploadId', uploadId);
+                    await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
+                } catch(e) {
+                    reject('送信失敗');
+                    return;
+                }
+                // ポーリングで結果を取得
+                let attempts = 0;
+                const maxAttempts = 40;
+                const poll = function() {
+                    const cbName = 'upChk_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+                    window[cbName] = function(data) {
+                        delete window[cbName];
+                        if (scr.parentNode) document.head.removeChild(scr);
+                        if (data && data.status === 'done' && data.url) {
+                            resolve(data.url);
+                        } else if (++attempts < maxAttempts) {
+                            setTimeout(poll, 2000);
+                        } else {
+                            reject('タイムアウト');
+                        }
+                    };
+                    var scr = document.createElement('script');
+                    scr.src = GAS_URL + '?check_upload=' + encodeURIComponent(uploadId) + '&callback=' + cbName + '&t=' + Date.now();
+                    scr.onerror = function() {
+                        delete window[cbName];
+                        if (scr.parentNode) document.head.removeChild(scr);
+                        if (++attempts < maxAttempts) setTimeout(poll, 2000);
+                        else reject('通信エラー');
+                    };
+                    document.head.appendChild(scr);
+                };
+                setTimeout(poll, 3000);
+            });
+        }
+
+        // === 写真プレビュー（追加フォーム） ===
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('f-photos').addEventListener('change', handleAddPhotos);
+            document.getElementById('e-photos').addEventListener('change', handleEditPhotos);
+        });
+
+        async function handleAddPhotos(e) {
+            const files = [...e.target.files].slice(0, 5 - pendingPhotos.length);
+            const preview = document.getElementById('f-photo-preview');
+            for (const file of files) {
+                const base64 = await resizeImage(file);
+                const idx = pendingPhotos.length;
+                pendingPhotos.push(base64);
+                const div = document.createElement('div');
+                div.className = 'photo-preview-item';
+                div.innerHTML = '<img src="' + base64 + '"><button class="remove-photo" onclick="removeAddPhoto(' + idx + ')">✕</button>';
+                preview.appendChild(div);
+            }
+            e.target.value = '';
+        }
+
+        function removeAddPhoto(idx) {
+            pendingPhotos[idx] = null;
+            renderAddPhotoPreview();
+        }
+
+        function renderAddPhotoPreview() {
+            const preview = document.getElementById('f-photo-preview');
+            preview.innerHTML = '';
+            pendingPhotos.forEach(function(p, i) {
+                if (!p) return;
+                const div = document.createElement('div');
+                div.className = 'photo-preview-item';
+                div.innerHTML = '<img src="' + p + '"><button class="remove-photo" onclick="removeAddPhoto(' + i + ')">✕</button>';
+                preview.appendChild(div);
+            });
+        }
+
+        async function handleEditPhotos(e) {
+            const totalExisting = editExistingPhotos.filter(function(p) { return p; }).length;
+            const totalPending = editPendingPhotos.filter(function(p) { return p; }).length;
+            const remaining = 5 - totalExisting - totalPending;
+            const files = [...e.target.files].slice(0, remaining);
+            for (const file of files) {
+                const base64 = await resizeImage(file);
+                editPendingPhotos.push(base64);
+            }
+            renderEditPhotoPreview();
+            e.target.value = '';
+        }
+
+        function removeEditExistingPhoto(idx) {
+            editExistingPhotos[idx] = null;
+            renderEditPhotoPreview();
+        }
+
+        function removeEditPendingPhoto(idx) {
+            editPendingPhotos[idx] = null;
+            renderEditPhotoPreview();
+        }
+
+        function renderEditPhotoPreview() {
+            const existing = document.getElementById('e-existing-photos');
+            existing.innerHTML = '';
+            editExistingPhotos.forEach(function(url, i) {
+                if (!url) return;
+                const div = document.createElement('div');
+                div.className = 'photo-preview-item';
+                div.innerHTML = '<img src="' + url + '"><button class="remove-photo" onclick="removeEditExistingPhoto(' + i + ')">✕</button>';
+                existing.appendChild(div);
+            });
+            const preview = document.getElementById('e-photo-preview');
+            preview.innerHTML = '';
+            editPendingPhotos.forEach(function(p, i) {
+                if (!p) return;
+                const div = document.createElement('div');
+                div.className = 'photo-preview-item';
+                div.innerHTML = '<img src="' + p + '"><button class="remove-photo" onclick="removeEditPendingPhoto(' + i + ')">✕</button>';
+                preview.appendChild(div);
+            });
+        }
+
+        // === タブ切替 ===
+        function switchTab(name) {
+            ['records', 'members', 'stats'].forEach(function(n, i) {
+                document.querySelectorAll('.tab')[i].classList.toggle('active', n === name);
+                document.getElementById('panel-' + n).classList.toggle('active', n === name);
+            });
+            document.querySelectorAll('.bottom-nav button').forEach(function(btn, i) {
+                btn.classList.toggle('active', (i === 0 && name === 'records') || (i === 1 && name === 'members') || (i === 2 && name === 'stats'));
+            });
+            if (name === 'stats') renderStats();
+            if (name === 'members') renderMembers();
+        }
+
+        // === 記録追加フォーム ===
+        function toggleAddForm() {
+            const f = document.getElementById('add-form');
+            const btn = document.getElementById('add-toggle');
+            const visible = f.style.display !== 'none';
+            f.style.display = visible ? 'none' : 'block';
+            btn.textContent = visible ? '➕ 記録を追加' : '✖ 閉じる';
+            if (!visible) {
+                const now = new Date();
+                now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+                document.getElementById('f-date').value = now.toISOString().slice(0, 10);
+                renderMemberCheckboxes();
+                pendingPhotos = [];
+                document.getElementById('f-photo-preview').innerHTML = '';
+                document.getElementById('f-upload-progress').style.display = 'none';
+            }
+        }
+
+        function renderMemberCheckboxes() {
+            const c = document.getElementById('member-checkboxes');
+            c.innerHTML = state.members.length === 0
+                ? '<span style="color:var(--gray-400);font-size:.85rem;">まずメンバーを登録してください</span>'
+                : state.members.map(function(m) { return '<label class="checkbox-label"><input type="checkbox" value="' + m + '"> ' + m + '</label>'; }).join('');
+        }
+
+        // === 記録追加 ===
+        async function addRecord() {
+            const date = document.getElementById('f-date').value;
+            const place = document.getElementById('f-place').value.trim();
+            const work = document.getElementById('f-work').value.trim();
+            const memo = document.getElementById('f-memo').value.trim();
+            const members = [...document.querySelectorAll('#member-checkboxes input:checked')].map(function(c) { return c.value; });
+
+            if (!date || !place || !work || members.length === 0) {
+                showToast('⚠️ 日時・場所・メンバー・作業内容は必須です');
+                return;
+            }
+
+            const btn = document.getElementById('submit-btn');
+            btn.disabled = true;
+            const progress = document.getElementById('f-upload-progress');
+
+            // 写真アップロード
+            const photos = pendingPhotos.filter(function(p) { return p; });
+            const photoUrls = [];
+            if (photos.length > 0) {
+                progress.style.display = 'block';
+                for (let i = 0; i < photos.length; i++) {
+                    progress.textContent = '📷 写真アップロード中 (' + (i + 1) + '/' + photos.length + ')…';
+                    btn.textContent = '📷 ' + (i + 1) + '/' + photos.length + ' アップロード中…';
+                    try {
+                        const uploadId = 'img_' + Date.now() + '_' + i;
+                        const url = await uploadImageToCloud(photos[i], uploadId);
+                        photoUrls.push(url);
+                    } catch(e) {
+                        showToast('⚠️ 写真' + (i + 1) + 'のアップロードに失敗しました');
+                    }
+                }
+            }
+
+            btn.textContent = '保存中…';
+            progress.textContent = '💾 データ保存中…';
+
+            const record = { id: Date.now(), date: date, place: place, work: work, memo: memo, members: members };
+            if (photoUrls.length > 0) record.photos = photoUrls;
+            state.records.unshift(record);
+            await saveToCloud();
+            renderRecords();
+            updateHeaderCount();
+
+            ['f-date', 'f-place', 'f-work', 'f-memo'].forEach(function(id) { document.getElementById(id).value = ''; });
+            document.querySelectorAll('#member-checkboxes input').forEach(function(c) { c.checked = false; });
+            pendingPhotos = [];
+            document.getElementById('f-photo-preview').innerHTML = '';
+            progress.style.display = 'none';
+
+            btn.disabled = false;
+            btn.textContent = '➕ 記録を追加';
+            toggleAddForm();
+            showToast('✅ 記録を追加しました！');
+        }
+
+        // === 記録削除 ===
+        async function deleteRecord(id) {
+            if (!checkAdmin()) return;
+            if (!confirm('この記録を削除しますか？')) return;
+            state.records = state.records.filter(function(r) { return r.id !== id; });
+            await saveToCloud();
+            renderRecords();
+            updateHeaderCount();
+            showToast('🗑 記録を削除しました');
+        }
+
+        // === 記録描画 ===
+        function renderRecords() {
+            const list = document.getElementById('records-list');
+            if (state.records.length === 0) {
+                list.innerHTML = '<div class="empty"><div class="empty-icon">🧹</div><div class="empty-text">まだ記録がありません<br>「記録を追加」から活動を記録しましょう！</div></div>';
+                return;
+            }
+            const sorted = [...state.records].sort(function(a, b) {
+                const da = new Date((a.date.includes('T') ? a.date.split('T')[0] : a.date) + 'T00:00:00');
+                const db = new Date((b.date.includes('T') ? b.date.split('T')[0] : b.date) + 'T00:00:00');
+                return sortOrder === 'desc' ? db - da : da - db;
+            });
+            list.innerHTML = sorted.map(function(r) {
+                const dateStr = r.date.includes('T') ? r.date.split('T')[0] : r.date;
+                const d = new Date(dateStr + 'T00:00:00');
+                const ds = d.getFullYear() + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getDate()).padStart(2, '0');
+                const tags = r.members.map(function(m) { return '<span class="tag">👤 ' + m + '</span>'; }).join('');
+                const photosHtml = (r.photos && r.photos.length > 0)
+                    ? '<div class="photo-grid">' + r.photos.map(function(url) {
+                        const fullUrl = url.replace('sz=w800', 'sz=w1600');
+                        return '<img src="' + url + '" onclick="openLightbox(\'' + fullUrl + '\')" loading="lazy">';
+                      }).join('') + '</div>'
+                    : '';
+                const adminBtns = isAdmin
+                    ? '<div style="position:absolute;top:12px;right:12px;display:flex;gap:6px;"><button class="edit-btn" onclick="openEdit(' + r.id + ')" title="編集">✏️</button><button class="delete-btn" style="position:static;" onclick="deleteRecord(' + r.id + ')" title="削除">✕</button></div>'
+                    : '';
+                return '<div class="card">' + adminBtns +
+                    '<div class="card-header"><span class="card-date">' + ds + '</span><span class="card-location">📍 ' + r.place + '</span></div>' +
+                    '<div class="card-meta"><div>🧹 ' + r.work + '</div>' +
+                    (r.memo ? '<div>📝 ' + r.memo + '</div>' : '') +
+                    '<div style="margin-top:6px">' + tags + '</div>' +
+                    photosHtml + '</div></div>';
+            }).join('');
+        }
+
+        // === ライトボックス ===
+        function openLightbox(url) {
+            const overlay = document.createElement('div');
+            overlay.className = 'lightbox';
+            overlay.innerHTML = '<button class="lightbox-close">✕</button><img src="' + url + '">';
+            overlay.onclick = function() { overlay.remove(); };
+            document.body.appendChild(overlay);
+        }
+
+        // === 管理者 ===
+        function checkAdmin() {
+            if (isAdmin) return true;
+            isAdmin = true;
+            renderRecords();
+            renderMembers();
+            showToast('✅ 管理者としてログインしました');
+            return true;
+        }
+
+        function toggleAdmin() {
+            if (isAdmin) {
+                isAdmin = false;
+                document.getElementById('admin-btn').textContent = '🔒 管理者';
+                document.getElementById('admin-btn').style.color = 'var(--gray-400)';
+                document.getElementById('admin-btn').style.borderColor = 'var(--gray-200)';
+                renderRecords(); renderMembers();
+                showToast('🔒 管理者からログアウトしました');
+            } else {
+                checkAdmin();
+                if (isAdmin) {
+                    document.getElementById('admin-btn').textContent = '🔓 管理者';
+                    document.getElementById('admin-btn').style.color = 'var(--ocean)';
+                    document.getElementById('admin-btn').style.borderColor = 'var(--ocean)';
+                }
+            }
+        }
+
+        // === ソート ===
+        function toggleSort() {
+            sortOrder = sortOrder === 'desc' ? 'asc' : 'desc';
+            document.getElementById('sort-btn').textContent = sortOrder === 'desc' ? '🔽 新しい順' : '🔼 古い順';
+            renderRecords();
+        }
+
+        // === 編集 ===
+        function openEdit(id) {
+            if (!checkAdmin()) return;
+            const r = state.records.find(function(r) { return r.id === id; });
+            if (!r) return;
+            editingId = id;
+            const dateStr = r.date.includes('T') ? r.date.split('T')[0] : r.date;
+            document.getElementById('e-date').value = dateStr;
+            document.getElementById('e-place').value = r.place;
+            document.getElementById('e-work').value = r.work;
+            document.getElementById('e-memo').value = r.memo || '';
+            const c = document.getElementById('e-member-checkboxes');
+            c.innerHTML = state.members.length === 0
+                ? '<span style="color:var(--gray-400);font-size:.85rem;">メンバーが登録されていません</span>'
+                : state.members.map(function(m) { return '<label class="checkbox-label"><input type="checkbox" value="' + m + '"' + (r.members.includes(m) ? ' checked' : '') + '> ' + m + '</label>'; }).join('');
+            editExistingPhotos = r.photos ? [...r.photos] : [];
+            editPendingPhotos = [];
+            renderEditPhotoPreview();
+            document.getElementById('e-upload-progress').style.display = 'none';
+            document.getElementById('edit-modal').style.display = 'flex';
+        }
+
+        function closeEdit() {
+            document.getElementById('edit-modal').style.display = 'none';
+            editingId = null;
+        }
+
+        async function saveEdit() {
+            const date = document.getElementById('e-date').value;
+            const place = document.getElementById('e-place').value.trim();
+            const work = document.getElementById('e-work').value.trim();
+            const memo = document.getElementById('e-memo').value.trim();
+            const members = [...document.querySelectorAll('#e-member-checkboxes input:checked')].map(function(c) { return c.value; });
+
+            if (!date || !place || !work || members.length === 0) {
+                showToast('⚠️ 日付・場所・メンバー・作業内容は必須です');
+                return;
+            }
+
+            const progress = document.getElementById('e-upload-progress');
+            const newPhotos = editPendingPhotos.filter(function(p) { return p; });
+            const newPhotoUrls = [];
+
+            if (newPhotos.length > 0) {
+                progress.style.display = 'block';
+                for (let i = 0; i < newPhotos.length; i++) {
+                    progress.textContent = '📷 写真アップロード中 (' + (i + 1) + '/' + newPhotos.length + ')…';
+                    try {
+                        const uploadId = 'img_' + Date.now() + '_' + i;
+                        const url = await uploadImageToCloud(newPhotos[i], uploadId);
+                        newPhotoUrls.push(url);
+                    } catch(e) {
+                        showToast('⚠️ 写真' + (i + 1) + 'のアップロードに失敗しました');
+                    }
+                }
+            }
+
+            const allPhotos = editExistingPhotos.filter(function(p) { return p; }).concat(newPhotoUrls);
+
+            const idx = state.records.findIndex(function(r) { return r.id === editingId; });
+            if (idx !== -1) {
+                state.records[idx] = Object.assign({}, state.records[idx], {
+                    date: date, place: place, work: work, memo: memo, members: members,
+                    photos: allPhotos.length > 0 ? allPhotos : undefined
+                });
+                if (allPhotos.length === 0) delete state.records[idx].photos;
+                progress.textContent = '💾 保存中…';
+                await saveToCloud();
+                renderRecords();
+                updateHeaderCount();
+                showToast('✅ 記録を更新しました！');
+            }
+            progress.style.display = 'none';
+            closeEdit();
+        }
+
+        // === メンバー ===
+        async function addMember() {
+            const inp = document.getElementById('new-member');
+            const name = inp.value.trim();
+            if (!name) return;
+            if (state.members.includes(name)) { showToast('⚠️ 同じ名前のメンバーが既に存在します'); return; }
+            state.members.push(name);
+            state.members.sort(function(a, b) { return a.localeCompare(b, 'ja'); });
+            inp.value = '';
+            await saveToCloud();
+            renderMembers();
+            showToast('✅ ' + name + ' を追加しました');
+        }
+
+        async function deleteMember(name) {
+            if (!checkAdmin()) return;
+            if (!confirm(name + ' を削除しますか？')) return;
+            state.members = state.members.filter(function(m) { return m !== name; });
+            await saveToCloud();
+            renderMembers();
+            showToast('🗑 ' + name + ' を削除しました');
+        }
+
+        function renderMembers() {
+            const list = document.getElementById('member-list');
+            if (state.members.length === 0) {
+                list.innerHTML = '<div class="empty" style="width:100%"><div class="empty-icon">👤</div><div class="empty-text">メンバーが登録されていません</div></div>';
+                return;
+            }
+            const year = new Date().getFullYear();
+            const counts = {};
+            state.records.filter(function(r) { return new Date(r.date).getFullYear() === year; }).forEach(function(r) {
+                r.members.forEach(function(m) { counts[m] = (counts[m] || 0) + 1; });
+            });
+            const sorted = [...state.members].sort(function(a, b) { return (counts[b] || 0) - (counts[a] || 0); });
+            list.innerHTML = sorted.map(function(m) {
+                return '<div class="member-chip">👤 ' + m + ' <button onclick="deleteMember(\'' + m + '\')" title="削除">✕</button></div>';
+            }).join('');
+        }
+
+        // === 集計 ===
+        function renderStats() {
+            const year = new Date().getFullYear();
+            const yr = state.records.filter(function(r) { return new Date(r.date).getFullYear() === year; });
+            document.getElementById('st-total').textContent = state.records.length;
+            document.getElementById('st-year').textContent = yr.length;
+            document.getElementById('st-members').textContent = state.members.length;
+            const counts = {};
+            const excludeFromRanking = ['大竹'];
+            yr.forEach(function(r) { r.members.forEach(function(m) { if (!excludeFromRanking.includes(m)) counts[m] = (counts[m] || 0) + 1; }); });
+            const sorted = Object.entries(counts).sort(function(a, b) { return b[1] - a[1]; });
+            const max = sorted[0] ? sorted[0][1] : 1;
+            const medals = ['🥇', '🥈', '🥉'];
+            const rc = ['rank-1', 'rank-2', 'rank-3'];
+            const rl = document.getElementById('ranking-list');
+            if (sorted.length === 0) {
+                rl.innerHTML = '<div class="empty"><div class="empty-icon">🏆</div><div class="empty-text">まだ今年の記録がありません</div></div>';
+                return;
+            }
+            rl.innerHTML = sorted.map(function(entry, i) {
+                var name = entry[0], cnt = entry[1];
+                const pct = Math.round(cnt / max * 100);
+                const badge = i < 3 ? '<span class="rank-badge ' + rc[i] + '">' + medals[i] + '</span>' : '<span class="rank-badge rank-n">' + (i + 1) + '</span>';
+                return '<div class="rank-item">' + badge + '<div class="rank-item-inner"><div class="rank-name">' + name + '</div><div class="rank-bar-bg"><div class="rank-bar" style="width:' + pct + '%"></div></div></div><span class="rank-count">' + cnt + '</span></div>';
+            }).join('');
+        }
+
+        function updateHeaderCount() {
+            const cnt = state.records.filter(function(r) { return new Date(r.date).getFullYear() === new Date().getFullYear(); }).length;
+            document.getElementById('header-count').textContent = cnt;
+        }
+
+        function renderAll() { renderRecords(); renderMembers(); renderStats(); updateHeaderCount(); }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.classList.add('show');
+            setTimeout(function() { t.classList.remove('show'); }, 2500);
+        }
+
+        // === 自動同期 ===
+        setInterval(function() {
+            const callbackName = 'gasRefresh_' + Date.now();
+            window[callbackName] = function(remote) {
+                try {
+                    if (remote && Array.isArray(remote.records) && JSON.stringify(remote) !== JSON.stringify(state)) {
+                        state = remote;
+                        renderAll();
+                        showToast('🔄 データを更新しました');
+                    }
+                } catch(e) {}
+                if (script.parentNode) document.head.removeChild(script);
+                delete window[callbackName];
+            };
+            var script = document.createElement('script');
+            script.src = GAS_URL + '?callback=' + callbackName + '&t=' + Date.now();
+            script.onerror = function() { if (script.parentNode) document.head.removeChild(script); delete window[callbackName]; };
+            document.head.appendChild(script);
+        }, 30000);
+
+        loadFromCloud();
+    </script>
+</body>
+</html>
