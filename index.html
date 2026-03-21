@@ -171,7 +171,7 @@
                 <div class="header-sub">年末の王様は誰だ</div>
             </div>
             <div class="header-right">
-                <button id="admin-btn" onclick="toggleAdmin()" style="background: none; border: 1.5px solid var(--gray-200); border-radius: 6px; padding: 6px 10px; cursor: pointer; font-weight: 700; color: var(--gray-400); transition: all 0.2s;">🔒 管理者</button>
+                <button id="admin-btn" onclick="toggleAdmin()" style="display:none;">🔒 管理者</button>
                 <div class="sync-indicator">
                     <span id="sync-label">同期済み</span>
                     <span id="sync-dot" class="sync-dot"></span>
@@ -303,7 +303,7 @@
         let editingId = null;
         let sortOrder = 'desc';
         const ADMIN_PASSWORD = 'Clean Vibes';
-        let isAdmin = false;
+        let isAdmin = true;
         let pendingPhotos = [];
         let editPendingPhotos = [];
         let editExistingPhotos = [];
