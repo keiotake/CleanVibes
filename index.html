@@ -608,6 +608,7 @@
         let editingId = null;
         let sortOrder = 'desc';
         const ADMIN_PASSWORD = 'Clean Vibes';
+        const DELETE_PASSWORD = '0325';
         let isAdmin = true;
         let pendingPhotos = [];
         let editPendingPhotos = [];
@@ -927,8 +928,14 @@
             showToast('記録を追加しました！');
         }
 
+        function checkDeletePassword() {
+            var pw = prompt('削除パスワードを入力してください');
+            if (pw !== DELETE_PASSWORD) { showToast('パスワードが違います'); return false; }
+            return true;
+        }
+
         async function deleteRecord(id) {
-            if (!checkAdmin()) return;
+            if (!checkDeletePassword()) return;
             if (!confirm('この記録を削除しますか？')) return;
             state.records = state.records.filter(function(r) { return r.id !== id; });
             await saveToCloud();
@@ -1072,7 +1079,7 @@
         }
 
         async function deleteMember(name) {
-            if (!checkAdmin()) return;
+            if (!checkDeletePassword()) return;
             if (!confirm(name + ' を削除しますか？')) return;
             state.members = state.members.filter(function(m) { return m !== name; });
             await saveToCloud();
@@ -1329,7 +1336,7 @@
         }
 
         async function deleteSupport(id) {
-            if (!checkAdmin()) return;
+            if (!checkDeletePassword()) return;
             if (!confirm('この支援記録を削除しますか？')) return;
             state.supports = state.supports.filter(function(s) { return s.id !== id; });
             await saveToCloud();
@@ -1400,7 +1407,7 @@
         }
 
         async function deleteAccounting(id) {
-            if (!checkAdmin()) return;
+            if (!checkDeletePassword()) return;
             if (!confirm('この収支記録を削除しますか？')) return;
             state.accounting = state.accounting.filter(function(a) { return a.id !== id; });
             await saveToCloud();
