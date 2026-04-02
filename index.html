@@ -3,13 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🌟 CleanVibes活動記録</title>
+    <title>CleanVibes - 綺麗なまちを後世へ</title>
+    <link rel="icon" href="assets/logo-icon.png" type="image/png">
     <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --sky: #e8f4fd;
             --ocean: #0ea5e9;
             --deep: #0369a1;
+            --teal: #0d9488;
             --mint: #d1fae5;
             --green: #10b981;
             --white: #ffffff;
@@ -23,19 +25,36 @@
             --silver: #94a3b8;
             --bronze: #d97706;
             --danger: #ef4444;
+            --gradient-main: linear-gradient(135deg, #0ea5e9 0%, #0d9488 50%, #10b981 100%);
+            --gradient-card: linear-gradient(135deg, rgba(14,165,233,0.05) 0%, rgba(16,185,129,0.05) 100%);
+            --shadow-sm: 0 2px 8px rgba(14,165,233,0.08);
+            --shadow-md: 0 4px 20px rgba(14,165,233,0.12);
+            --shadow-lg: 0 8px 32px rgba(14,165,233,0.16);
         }
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body {
             font-family: 'Zen Kaku Gothic New', sans-serif;
-            background: var(--sky); color: var(--gray-800); min-height: 100vh;
+            background: #f0f7fb; color: var(--gray-800); min-height: 100vh;
             background-image:
-                radial-gradient(ellipse at 10% 10%, rgba(14,165,233,0.08) 0%, transparent 60%),
-                radial-gradient(ellipse at 90% 80%, rgba(16,185,129,0.06) 0%, transparent 60%);
+                radial-gradient(ellipse at 10% 10%, rgba(14,165,233,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse at 90% 80%, rgba(16,185,129,0.04) 0%, transparent 60%),
+                radial-gradient(ellipse at 50% 50%, rgba(13,148,136,0.03) 0%, transparent 70%);
         }
-        header { background: var(--white); border-bottom: 3px solid var(--ocean); position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 20px rgba(14,165,233,0.12); }
-        .header-inner { max-width: 960px; margin: 0 auto; padding: 14px 20px; display: flex; align-items: center; gap: 12px; }
-        .header-title { font-weight: 900; font-size: 1.4rem; color: var(--deep); }
-        .header-sub { font-family: 'Space Mono', monospace; font-size: 0.7rem; color: var(--ocean); background: var(--sky); padding: 2px 8px; border-radius: 20px; border: 1px solid var(--ocean); }
+
+        /* === HEADER === */
+        header {
+            background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(232,244,253,0.95) 100%);
+            backdrop-filter: blur(12px);
+            border-bottom: 3px solid transparent;
+            border-image: var(--gradient-main) 1;
+            position: sticky; top: 0; z-index: 100;
+            box-shadow: var(--shadow-md);
+        }
+        .header-inner { max-width: 960px; margin: 0 auto; padding: 10px 20px; display: flex; align-items: center; gap: 12px; }
+        .header-logo { height: 44px; transition: transform 0.3s; }
+        .header-logo:hover { transform: scale(1.05); }
+        .header-title { font-weight: 900; font-size: 1.3rem; background: var(--gradient-main); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .header-sub { font-size: 0.65rem; color: var(--teal); font-weight: 700; letter-spacing: 0.05em; }
         .header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
         .sync-indicator { font-size: 0.7rem; color: var(--gray-400); display: flex; align-items: center; gap: 4px; }
         .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); display: inline-block; }
@@ -43,108 +62,259 @@
         .sync-dot.error { background: var(--danger); }
         @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
         .header-count { font-weight: 700; font-size: 0.85rem; color: var(--gray-600); white-space: nowrap; }
-        .count-num { font-family: 'Space Mono', monospace; font-size: 1.2rem; color: var(--ocean); font-weight: 700; }
+        .count-num { font-family: 'Space Mono', monospace; font-size: 1.2rem; background: var(--gradient-main); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-weight: 700; }
+
+        /* === TABS === */
         .tabs { max-width: 960px; margin: 0 auto; padding: 18px 20px 0; display: flex; gap: 4px; }
-        .tab { padding: 10px 20px; border: 2px solid var(--gray-200); border-bottom: none; background: var(--white); color: var(--gray-600); border-radius: 10px 10px 0 0; font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: all 0.2s; }
-        .tab:hover { color: var(--ocean); }
-        .tab.active { color: var(--ocean); border-color: var(--ocean); position: relative; }
-        .tab.active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 2px; background: var(--white); }
+        .tab {
+            padding: 10px 20px; border: 2px solid var(--gray-200); border-bottom: none;
+            background: var(--white); color: var(--gray-600); border-radius: 12px 12px 0 0;
+            font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 0.9rem; font-weight: 700;
+            cursor: pointer; transition: all 0.3s;
+        }
+        .tab:hover { color: var(--ocean); background: var(--sky); }
+        .tab.active { color: var(--white); background: var(--gradient-main); border-color: var(--ocean); position: relative; }
+        .tab.active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 3px; background: var(--white); }
         .bottom-nav { display: none; }
         .main { max-width: 960px; margin: 0 auto; padding: 0 20px 40px; }
-        .panel { background: var(--white); border-radius: 0 12px 12px 12px; border: 2px solid var(--ocean); padding: 24px; display: none; }
+        .panel { background: var(--white); border-radius: 0 16px 16px 16px; border: 2px solid var(--ocean); padding: 24px; display: none; box-shadow: var(--shadow-sm); }
         .panel.active { display: block; }
-        .card { background: var(--gray-50); border: 1.5px solid var(--gray-200); border-radius: 12px; padding: 18px; margin-bottom: 10px; transition: all 0.2s; position: relative; }
-        .card:hover { border-color: var(--ocean); box-shadow: 0 4px 16px rgba(14,165,233,0.1); transform: translateY(-1px); }
+
+        /* === CARDS === */
+        .card {
+            background: var(--white); border: 1.5px solid var(--gray-200); border-radius: 16px;
+            padding: 18px; margin-bottom: 12px; transition: all 0.3s; position: relative;
+            background-image: var(--gradient-card);
+        }
+        .card:hover { border-color: var(--ocean); box-shadow: var(--shadow-md); transform: translateY(-2px); }
         .card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
-        .card-date { font-family: 'Space Mono', monospace; font-size: 0.75rem; color: var(--white); background: var(--ocean); padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+        .card-date {
+            font-family: 'Space Mono', monospace; font-size: 0.75rem; color: var(--white);
+            background: var(--gradient-main); padding: 4px 12px; border-radius: 20px; white-space: nowrap;
+        }
         .card-location { font-weight: 700; font-size: 0.95rem; }
         .card-meta { font-size: 0.85rem; color: var(--gray-600); line-height: 1.7; }
-        .tag { display: inline-block; background: var(--mint); color: var(--green); border-radius: 6px; padding: 2px 8px; font-size: 0.75rem; font-weight: 700; margin-right: 4px; margin-top: 4px; }
-        .edit-btn { background: none; border: 1.5px solid var(--gray-200); border-radius: 6px; width: 32px; height: 32px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+        .tag {
+            display: inline-block; background: linear-gradient(135deg, var(--mint), #c7f9e0);
+            color: var(--teal); border-radius: 8px; padding: 3px 10px; font-size: 0.75rem;
+            font-weight: 700; margin-right: 4px; margin-top: 4px; border: 1px solid rgba(13,148,136,0.15);
+        }
+
+        /* === BUTTONS === */
+        .edit-btn { background: none; border: 1.5px solid var(--gray-200); border-radius: 8px; width: 32px; height: 32px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
         .edit-btn:hover { border-color: var(--ocean); background: var(--sky); }
-        .delete-btn { position: absolute; top: 12px; right: 12px; background: none; border: 1.5px solid var(--gray-200); border-radius: 6px; width: 32px; height: 32px; cursor: pointer; font-size: 0.9rem; color: var(--gray-400); transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
+        .delete-btn { position: absolute; top: 12px; right: 12px; background: none; border: 1.5px solid var(--gray-200); border-radius: 8px; width: 32px; height: 32px; cursor: pointer; font-size: 0.9rem; color: var(--gray-400); transition: all 0.2s; display: flex; align-items: center; justify-content: center; }
         .delete-btn:hover { border-color: var(--danger); color: var(--danger); background: #fef2f2; }
-        .form-section { margin-bottom: 20px; padding: 18px; background: var(--sky); border-radius: 12px; border: 2px dashed var(--ocean); }
-        .form-title { font-weight: 900; font-size: 1rem; color: var(--deep); margin-bottom: 14px; }
+        .btn { padding: 12px 22px; border: none; border-radius: 10px; font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.3s; }
+        .btn-primary { background: var(--gradient-main); color: var(--white); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); filter: brightness(1.1); }
+        .btn-primary:disabled { background: var(--gray-400); transform: none; box-shadow: none; cursor: not-allowed; filter: none; }
+        .btn-secondary { background: var(--gray-100); color: var(--gray-600); border: 1.5px solid var(--gray-200); margin-left: 8px; }
+        .btn-secondary:hover { background: var(--gray-200); }
+
+        /* === FORMS === */
+        .form-section { margin-bottom: 20px; padding: 20px; background: linear-gradient(135deg, var(--sky), #e0f2fe); border-radius: 16px; border: 2px dashed var(--ocean); }
+        .form-title { font-weight: 900; font-size: 1rem; background: var(--gradient-main); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 14px; }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .form-group { display: flex; flex-direction: column; gap: 5px; }
         .form-group.full { grid-column: 1 / -1; }
         label { font-size: 0.8rem; font-weight: 700; color: var(--deep); }
-        input, textarea, select { padding: 11px 14px; border: 1.5px solid var(--gray-200); border-radius: 8px; font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 1rem; color: var(--gray-800); background: var(--white); outline: none; transition: border-color 0.2s; }
-        input:focus, textarea:focus { border-color: var(--ocean); box-shadow: 0 0 0 3px rgba(14,165,233,0.1); }
+        input, textarea, select { padding: 11px 14px; border: 1.5px solid var(--gray-200); border-radius: 10px; font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 1rem; color: var(--gray-800); background: var(--white); outline: none; transition: all 0.3s; }
+        input:focus, textarea:focus { border-color: var(--ocean); box-shadow: 0 0 0 3px rgba(14,165,233,0.15); }
         textarea { resize: vertical; min-height: 70px; }
-        .btn { padding: 12px 22px; border: none; border-radius: 8px; font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.2s; }
-        .btn-primary { background: var(--ocean); color: var(--white); }
-        .btn-primary:hover { background: var(--deep); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(14,165,233,0.3); }
-        .btn-primary:disabled { background: var(--gray-400); transform: none; box-shadow: none; cursor: not-allowed; }
-        .btn-secondary { background: var(--gray-100); color: var(--gray-600); border: 1.5px solid var(--gray-200); margin-left: 8px; }
-        .btn-secondary:hover { background: var(--gray-200); }
         .form-actions { margin-top: 14px; display: flex; }
-        .add-toggle-btn { width: 100%; padding: 15px; background: var(--white); border: 2px dashed var(--ocean); border-radius: 12px; color: var(--ocean); font-family: 'Zen Kaku Gothic New', sans-serif; font-weight: 700; font-size: 1rem; cursor: pointer; margin-bottom: 14px; transition: all 0.2s; }
-        .add-toggle-btn:hover { background: var(--sky); }
+        .add-toggle-btn {
+            width: 100%; padding: 16px; background: var(--white); border: 2px dashed var(--ocean);
+            border-radius: 16px; color: var(--ocean); font-family: 'Zen Kaku Gothic New', sans-serif;
+            font-weight: 700; font-size: 1rem; cursor: pointer; margin-bottom: 14px; transition: all 0.3s;
+        }
+        .add-toggle-btn:hover { background: var(--sky); transform: translateY(-1px); box-shadow: var(--shadow-sm); }
         .checkbox-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
-        .checkbox-label { display: inline-flex; align-items: center; gap: 5px; background: var(--white); border: 1.5px solid var(--gray-200); border-radius: 8px; padding: 8px 14px; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; }
-        .checkbox-label:has(input:checked) { border-color: var(--ocean); background: var(--sky); color: var(--deep); font-weight: 700; }
+        .checkbox-label { display: inline-flex; align-items: center; gap: 5px; background: var(--white); border: 1.5px solid var(--gray-200); border-radius: 10px; padding: 8px 14px; cursor: pointer; font-size: 0.9rem; transition: all 0.3s; }
+        .checkbox-label:has(input:checked) { border-color: var(--ocean); background: linear-gradient(135deg, var(--sky), #dbeafe); color: var(--deep); font-weight: 700; box-shadow: var(--shadow-sm); }
         .checkbox-label input { display: none; }
+
+        /* === STATS === */
         .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
-        .stat-card { background: var(--white); border: 1.5px solid var(--gray-200); border-radius: 12px; padding: 18px; text-align: center; }
-        .stat-num { font-family: 'Space Mono', monospace; font-size: 2rem; font-weight: 700; color: var(--ocean); }
+        .stat-card {
+            background: var(--white); border: 1.5px solid var(--gray-200); border-radius: 16px;
+            padding: 20px; text-align: center; transition: all 0.3s;
+            background-image: var(--gradient-card);
+        }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .stat-num { font-family: 'Space Mono', monospace; font-size: 2rem; font-weight: 700; background: var(--gradient-main); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
         .stat-label { font-size: 0.8rem; color: var(--gray-600); margin-top: 4px; }
-        .ranking-title { font-weight: 900; font-size: 1rem; color: var(--deep); margin-bottom: 10px; }
-        .rank-item { display: flex; align-items: center; gap: 10px; padding: 12px 14px; background: var(--gray-50); border-radius: 10px; margin-bottom: 8px; border: 1.5px solid var(--gray-200); }
+
+        /* === RANKING === */
+        .ranking-title { font-weight: 900; font-size: 1.1rem; background: var(--gradient-main); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin-bottom: 14px; }
+        .rank-item { display: flex; align-items: center; gap: 10px; padding: 14px 16px; background: var(--white); border-radius: 14px; margin-bottom: 10px; border: 1.5px solid var(--gray-200); transition: all 0.3s; background-image: var(--gradient-card); }
+        .rank-item:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
         .rank-badge { font-family: 'Space Mono', monospace; font-size: 1.2rem; font-weight: 700; width: 30px; text-align: center; }
         .rank-1 { color: var(--gold); } .rank-2 { color: var(--silver); } .rank-3 { color: var(--bronze); } .rank-n { color: var(--gray-400); font-size: 0.85rem; }
-        .rank-name { font-weight: 700; flex: 1; }
-        .rank-count { font-family: 'Space Mono', monospace; font-weight: 700; color: var(--ocean); font-size: 1.1rem; }
+        .rank-name { font-weight: 700; }
+        .rank-count { font-family: 'Space Mono', monospace; font-weight: 700; background: var(--gradient-main); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-size: 1.1rem; }
         .rank-item-inner { flex: 1; }
-        .rank-bar-bg { height: 4px; background: var(--gray-200); border-radius: 2px; margin-top: 4px; }
-        .rank-bar { height: 4px; background: linear-gradient(90deg, var(--ocean), var(--green)); border-radius: 2px; transition: width 0.6s ease; }
-        .member-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
-        .member-chip { display: inline-flex; align-items: center; gap: 6px; background: var(--sky); border: 1.5px solid var(--ocean); border-radius: 20px; padding: 7px 14px; font-size: 0.85rem; font-weight: 700; color: var(--deep); }
-        .member-chip button { background: none; border: none; cursor: pointer; color: var(--gray-400); font-size: 0.8rem; padding: 0; transition: color 0.2s; }
-        .member-chip button:hover { color: var(--danger); }
-        .member-add-row { display: flex; gap: 8px; }
-        .member-add-row input { flex: 1; }
-        .empty { text-align: center; padding: 40px 20px; color: var(--gray-400); }
-        .empty-icon { font-size: 3rem; margin-bottom: 8px; }
-        .empty-text { font-size: 0.9rem; line-height: 1.8; }
-        .toast { position: fixed; bottom: 24px; right: 24px; background: var(--deep); color: var(--white); padding: 12px 20px; border-radius: 10px; font-weight: 700; font-size: 0.9rem; transform: translateY(80px); opacity: 0; transition: all 0.3s; z-index: 1000; box-shadow: 0 8px 24px rgba(3,105,161,0.3); }
-        .toast.show { transform: translateY(0); opacity: 1; }
+        .rank-bar-bg { height: 6px; background: var(--gray-200); border-radius: 3px; margin-top: 4px; overflow: hidden; }
+        .rank-bar { height: 6px; background: var(--gradient-main); border-radius: 3px; transition: width 0.8s ease; }
 
-        /* 写真関連 */
+        /* === CHARACTER SYSTEM === */
+        .rank-character { display: flex; align-items: center; gap: 4px; }
+        .character-display { font-size: 1.5rem; line-height: 1; transition: all 0.3s; }
+        .character-level { font-size: 0.6rem; color: var(--teal); font-weight: 700; background: var(--mint); padding: 1px 6px; border-radius: 8px; white-space: nowrap; }
+
+        /* Character Card in Members Panel */
+        .member-card {
+            background: var(--white); border: 2px solid var(--gray-200); border-radius: 16px;
+            padding: 16px; text-align: center; transition: all 0.3s;
+            background-image: var(--gradient-card); min-width: 140px;
+        }
+        .member-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); border-color: var(--ocean); }
+        .member-card .char-avatar { font-size: 2.5rem; margin-bottom: 6px; display: block; animation: float 3s ease-in-out infinite; }
+        .member-card .char-name { font-weight: 900; font-size: 0.95rem; color: var(--deep); margin-bottom: 2px; }
+        .member-card .char-title { font-size: 0.7rem; color: var(--teal); font-weight: 700; margin-bottom: 6px; }
+        .member-card .char-count { font-family: 'Space Mono', monospace; font-size: 0.8rem; color: var(--ocean); }
+        .member-card .char-bar { height: 4px; background: var(--gray-200); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+        .member-card .char-bar-fill { height: 4px; background: var(--gradient-main); border-radius: 2px; transition: width 0.8s; }
+        .member-card .char-next { font-size: 0.6rem; color: var(--gray-400); margin-top: 4px; }
+        .member-card .delete-member-btn { background: none; border: none; color: var(--gray-400); cursor: pointer; font-size: 0.7rem; margin-top: 6px; transition: color 0.2s; }
+        .member-card .delete-member-btn:hover { color: var(--danger); }
+        .member-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-bottom: 14px; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-6px); }
+        }
+
+        /* === MY CHARACTER (Header area for Members) === */
+        .character-showcase {
+            background: linear-gradient(135deg, #e0f7fa, #e8f5e9, #e3f2fd);
+            border: 2px solid var(--ocean); border-radius: 20px; padding: 24px; margin-bottom: 20px;
+            text-align: center; position: relative; overflow: hidden;
+        }
+        .character-showcase::before {
+            content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: conic-gradient(from 0deg, transparent, rgba(14,165,233,0.05), transparent, rgba(16,185,129,0.05), transparent);
+            animation: spin 20s linear infinite;
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        .showcase-content { position: relative; z-index: 1; }
+        .showcase-char { font-size: 4rem; display: block; margin-bottom: 8px; animation: float 3s ease-in-out infinite; }
+        .showcase-title { font-weight: 900; font-size: 1.1rem; background: var(--gradient-main); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .showcase-subtitle { font-size: 0.8rem; color: var(--gray-600); margin-top: 4px; }
+
+        /* === ACHIEVEMENT BADGES === */
+        .badge-section { margin-top: 20px; }
+        .badge-title { font-weight: 900; font-size: 0.95rem; color: var(--deep); margin-bottom: 10px; }
+        .badge-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+        .badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700;
+            border: 1.5px solid var(--gray-200); background: var(--white); color: var(--gray-600);
+            transition: all 0.3s;
+        }
+        .badge.earned {
+            border-color: var(--gold); background: linear-gradient(135deg, #fffbeb, #fef3c7);
+            color: #92400e; box-shadow: 0 2px 8px rgba(245,158,11,0.2);
+        }
+        .badge.earned .badge-icon { animation: badgePop 0.5s ease; }
+        @keyframes badgePop { 0% { transform: scale(0); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
+        .badge-icon { font-size: 1rem; }
+
+        /* === ACTIVITY HEATMAP === */
+        .heatmap-section { margin-top: 20px; padding: 16px; background: var(--gray-50); border-radius: 16px; border: 1.5px solid var(--gray-200); }
+        .heatmap-title { font-weight: 900; font-size: 0.95rem; color: var(--deep); margin-bottom: 12px; }
+        .heatmap-months { display: flex; gap: 2px; overflow-x: auto; padding-bottom: 8px; }
+        .heatmap-month { text-align: center; }
+        .heatmap-month-label { font-size: 0.6rem; color: var(--gray-400); margin-bottom: 4px; }
+        .heatmap-weeks { display: flex; gap: 2px; }
+        .heatmap-week { display: flex; flex-direction: column; gap: 2px; }
+        .heatmap-day {
+            width: 12px; height: 12px; border-radius: 3px; background: var(--gray-200);
+            transition: all 0.2s; cursor: default;
+        }
+        .heatmap-day.level-1 { background: #bae6fd; }
+        .heatmap-day.level-2 { background: #38bdf8; }
+        .heatmap-day.level-3 { background: #0284c7; }
+        .heatmap-day.level-4 { background: #075985; }
+        .heatmap-day:hover { transform: scale(1.5); box-shadow: var(--shadow-sm); }
+        .heatmap-legend { display: flex; align-items: center; gap: 4px; margin-top: 8px; justify-content: flex-end; font-size: 0.6rem; color: var(--gray-400); }
+        .heatmap-legend-box { width: 10px; height: 10px; border-radius: 2px; }
+
+        /* === ENCOURAGEMENT / MESSAGE === */
+        .encourage-section { margin-top: 20px; padding: 16px; background: linear-gradient(135deg, #fefce8, #fef9c3); border: 1.5px solid #fde68a; border-radius: 16px; }
+        .encourage-title { font-weight: 900; font-size: 0.95rem; color: #92400e; margin-bottom: 10px; }
+        .encourage-msg { font-size: 0.85rem; color: #78350f; line-height: 1.7; }
+        .encourage-msg strong { background: linear-gradient(135deg, #f59e0b, #d97706); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+        /* === PHOTOS === */
         .photo-input-area { margin-top: 8px; }
-        .photo-input-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--white); border: 1.5px solid var(--ocean); border-radius: 8px; padding: 10px 16px; color: var(--ocean); font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; }
-        .photo-input-btn:hover { background: var(--sky); }
+        .photo-input-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--white); border: 1.5px solid var(--ocean); border-radius: 10px; padding: 10px 16px; color: var(--ocean); font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: all 0.3s; }
+        .photo-input-btn:hover { background: var(--sky); transform: translateY(-1px); }
         .photo-input-btn input { display: none; }
         .photo-preview { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-        .photo-preview-item { position: relative; width: 80px; height: 80px; border-radius: 8px; overflow: hidden; border: 1.5px solid var(--gray-200); }
+        .photo-preview-item { position: relative; width: 80px; height: 80px; border-radius: 10px; overflow: hidden; border: 1.5px solid var(--gray-200); }
         .photo-preview-item img { width: 100%; height: 100%; object-fit: cover; }
         .photo-preview-item .remove-photo { position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; border-radius: 50%; background: rgba(0,0,0,0.6); color: white; border: none; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; }
         .photo-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-        .photo-grid img { width: 120px; height: 90px; object-fit: cover; border-radius: 8px; cursor: pointer; transition: transform 0.2s; border: 1.5px solid var(--gray-200); }
-        .photo-grid img:hover { transform: scale(1.05); border-color: var(--ocean); }
+        .photo-grid img { width: 120px; height: 90px; object-fit: cover; border-radius: 10px; cursor: pointer; transition: all 0.3s; border: 1.5px solid var(--gray-200); }
+        .photo-grid img:hover { transform: scale(1.08); border-color: var(--ocean); box-shadow: var(--shadow-sm); }
         .lightbox { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); z-index: 9999; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-        .lightbox img { max-width: 95%; max-height: 90vh; border-radius: 8px; object-fit: contain; }
+        .lightbox img { max-width: 95%; max-height: 90vh; border-radius: 12px; object-fit: contain; }
         .lightbox-close { position: absolute; top: 16px; right: 20px; color: white; font-size: 2rem; cursor: pointer; background: none; border: none; }
         .upload-progress { margin-top: 8px; font-size: 0.8rem; color: var(--ocean); font-weight: 700; }
 
+        /* === MISC === */
+        .empty { text-align: center; padding: 40px 20px; color: var(--gray-400); }
+        .empty-icon { font-size: 3rem; margin-bottom: 8px; }
+        .empty-text { font-size: 0.9rem; line-height: 1.8; }
+        .toast { position: fixed; bottom: 24px; right: 24px; background: var(--gradient-main); color: var(--white); padding: 14px 22px; border-radius: 14px; font-weight: 700; font-size: 0.9rem; transform: translateY(80px); opacity: 0; transition: all 0.4s cubic-bezier(0.34,1.56,0.64,1); z-index: 1000; box-shadow: var(--shadow-lg); }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .member-add-row { display: flex; gap: 8px; margin-bottom: 14px; }
+        .member-add-row input { flex: 1; }
+
+        /* === ENVIRONMENTAL IMPACT === */
+        .impact-section { margin-top: 20px; padding: 16px; background: linear-gradient(135deg, #ecfdf5, #d1fae5); border: 1.5px solid rgba(16,185,129,0.3); border-radius: 16px; }
+        .impact-title { font-weight: 900; font-size: 0.95rem; color: #065f46; margin-bottom: 12px; }
+        .impact-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .impact-item { text-align: center; padding: 12px 8px; background: rgba(255,255,255,0.7); border-radius: 12px; }
+        .impact-num { font-family: 'Space Mono', monospace; font-size: 1.4rem; font-weight: 700; color: var(--green); }
+        .impact-label { font-size: 0.7rem; color: #047857; margin-top: 2px; }
+
+        /* === MONTHLY GOAL === */
+        .goal-section { margin-top: 20px; padding: 16px; background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 1.5px solid rgba(14,165,233,0.3); border-radius: 16px; }
+        .goal-title { font-weight: 900; font-size: 0.95rem; color: var(--deep); margin-bottom: 10px; }
+        .goal-progress-bar { height: 12px; background: var(--gray-200); border-radius: 6px; overflow: hidden; margin: 8px 0; }
+        .goal-progress-fill { height: 100%; background: var(--gradient-main); border-radius: 6px; transition: width 0.8s ease; position: relative; }
+        .goal-progress-fill::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent); animation: shimmer 2s infinite; }
+        @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+        .goal-text { font-size: 0.85rem; color: var(--deep); display: flex; justify-content: space-between; }
+
+        /* === MOBILE === */
         @media (max-width: 640px) {
-            .header-inner { padding: 10px 14px; gap: 8px; }
+            .header-inner { padding: 8px 14px; gap: 8px; }
+            .header-logo { height: 36px; }
             .header-title { font-size: 1rem; }
             .header-sub { display: none; }
             .header-count { font-size: 0.75rem; }
             .count-num { font-size: 1rem; }
             .tabs { display: none; }
             .main { padding: 10px 10px 90px; }
-            .panel { border-radius: 12px; padding: 14px; border: none; box-shadow: 0 2px 12px rgba(14,165,233,0.08); }
-            .bottom-nav { display: flex; position: fixed; bottom: 0; left: 0; right: 0; background: var(--white); border-top: 2px solid var(--ocean); z-index: 200; box-shadow: 0 -4px 20px rgba(14,165,233,0.12); }
-            .bottom-nav button { flex: 1; padding: 10px 4px 16px; background: none; border: none; font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 0.65rem; font-weight: 700; color: var(--gray-400); cursor: pointer; transition: color 0.2s; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+            .panel { border-radius: 16px; padding: 14px; border: none; box-shadow: var(--shadow-sm); }
+            .bottom-nav {
+                display: flex; position: fixed; bottom: 0; left: 0; right: 0;
+                background: linear-gradient(to top, rgba(255,255,255,0.98), rgba(255,255,255,0.95));
+                backdrop-filter: blur(12px);
+                border-top: 2px solid transparent; border-image: var(--gradient-main) 1;
+                z-index: 200; box-shadow: 0 -4px 20px rgba(14,165,233,0.12);
+            }
+            .bottom-nav button { flex: 1; padding: 10px 4px 16px; background: none; border: none; font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 0.65rem; font-weight: 700; color: var(--gray-400); cursor: pointer; transition: all 0.2s; display: flex; flex-direction: column; align-items: center; gap: 3px; }
             .bottom-nav button .nav-icon { font-size: 1.5rem; line-height: 1; transition: transform 0.2s; }
             .bottom-nav button.active { color: var(--ocean); }
             .bottom-nav button.active .nav-icon { transform: scale(1.2); }
             input, textarea, select { font-size: 1rem; padding: 12px 14px; }
             .form-grid { grid-template-columns: 1fr; }
             .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+            .impact-grid { grid-template-columns: 1fr 1fr 1fr; }
             .stat-card { padding: 12px 8px; } .stat-num { font-size: 1.5rem; } .stat-label { font-size: 0.72rem; }
             .btn { padding: 13px 18px; font-size: 1rem; }
             .add-toggle-btn { padding: 16px; font-size: 1rem; }
@@ -154,24 +324,34 @@
             .member-add-row .btn { width: 100%; }
             .toast { bottom: 80px; right: 10px; left: 10px; text-align: center; }
             .checkbox-label { padding: 9px 14px; font-size: 0.9rem; }
-            .member-chip { padding: 8px 14px; font-size: 0.88rem; }
+            .member-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+            .member-card { padding: 12px; min-width: auto; }
+            .member-card .char-avatar { font-size: 2rem; }
             .card { padding: 14px; } .card-meta { font-size: 0.88rem; }
             .photo-grid img { width: 90px; height: 68px; }
+            .heatmap-day { width: 10px; height: 10px; }
         }
-        #edit-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 300; align-items: center; justify-content: center; }
-        .modal-content { background: var(--white); border-radius: 12px; padding: 24px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; }
+
+        /* === MODAL === */
+        #edit-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 300; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+        .modal-content { background: var(--white); border-radius: 20px; padding: 24px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg); }
+
+        /* === FOOTER === */
+        .app-footer { max-width: 960px; margin: 0 auto; padding: 20px; text-align: center; }
+        .footer-logo { height: 60px; opacity: 0.6; margin-bottom: 8px; }
+        .footer-text { font-size: 0.7rem; color: var(--gray-400); }
     </style>
 </head>
 <body>
     <header>
         <div class="header-inner">
-            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAAACtWK6eAAABCGlDQ1BJQ0MgUHJvZmlsZQAAeJxjYGA8wQAELAYMDLl5JUVB7k4KEZFRCuwPGBiBEAwSk4sLGHADoKpv1yBqL+viUYcLcKakFicD6Q9ArFIEtBxopAiQLZIOYWuA2EkQtg2IXV5SUAJkB4DYRSFBzkB2CpCtkY7ETkJiJxcUgdT3ANk2uTmlyQh3M/Ck5oUGA2kOIJZhKGYIYnBncAL5H6IkfxEDg8VXBgbmCQixpJkMDNtbGRgkbiHEVBYwMPC3MDBsO48QQ4RJQWJRIliIBYiZ0tIYGD4tZ2DgjWRgEL7AwMAVDQsIHG5TALvNnSEfCNMZchhSgSKeDHkMyQx6QJYRgwGDIYMZAKbWPz9HbOBQAABYe0lEQVR42u29d5xcV3n//37OuXf6dmnVi2XLsiUXbMDGYLCckEBCMIQgBUJIxyGhffP9QgIprJTkl9BJ6CUklBCCREIoCRCKJWPAxtgY23K31etq++40e895fn/cO7MrWbJla1dayfP4Ndbu7O7M3HPP5zz980BLWtKSlrSkJS1pSUta0pKWtKQlLWlJS1rSkpa0pCUtaUlLWtKSlrSkJS1pSUta0pKWtKQlLWlJS1rSkrNY/n/2uLfsjOhKGAAAAABJRU5ErkJggg==" alt="logo" style="height: 40px;">
+            <img src="assets/logo-icon.png" alt="CleanVibes" class="header-logo">
             <div>
-                <div class="header-title">CleanVibes活動記録</div>
-                <div class="header-sub">年末の王様は誰だ</div>
+                <div class="header-title">CleanVibes</div>
+                <div class="header-sub">綺麗なまちを後世へ</div>
             </div>
             <div class="header-right">
-                <button id="admin-btn" onclick="toggleAdmin()" style="display:none;">🔒 管理者</button>
+                <button id="admin-btn" onclick="toggleAdmin()" style="display:none;">管理者</button>
                 <div class="sync-indicator">
                     <span id="sync-label">同期済み</span>
                     <span id="sync-dot" class="sync-dot"></span>
@@ -182,46 +362,46 @@
     </header>
 
     <div class="tabs">
-        <button class="tab active" onclick="switchTab('records')">📝活動記録</button>
-        <button class="tab" onclick="switchTab('members')">👥メンバー</button>
-        <button class="tab" onclick="switchTab('stats')">📊集計</button>
+        <button class="tab active" onclick="switchTab('records')">活動記録</button>
+        <button class="tab" onclick="switchTab('members')">メンバー</button>
+        <button class="tab" onclick="switchTab('stats')">集計</button>
     </div>
 
     <div class="main">
         <!-- Records Panel -->
         <div id="panel-records" class="panel active">
             <div style="margin-bottom: 14px; display: flex; gap: 8px;">
-                <button id="add-toggle" onclick="toggleAddForm()" class="add-toggle-btn">➕ 記録を追加</button>
-                <button id="sort-btn" onclick="toggleSort()" style="background: var(--ocean); color: var(--white); border: none; border-radius: 8px; padding: 12px 22px; font-family: 'Zen Kaku Gothic New', sans-serif; font-weight: 700; cursor: pointer;">🔽 新しい順</button>
+                <button id="add-toggle" onclick="toggleAddForm()" class="add-toggle-btn">+ 記録を追加</button>
+                <button id="sort-btn" onclick="toggleSort()" style="background: var(--gradient-main); color: var(--white); border: none; border-radius: 10px; padding: 12px 22px; font-family: 'Zen Kaku Gothic New', sans-serif; font-weight: 700; cursor: pointer; transition: all 0.3s;">新しい順</button>
             </div>
             <form id="add-form" style="display: none;">
                 <div class="form-section">
-                    <div class="form-title">✨ 活動記録を追加</div>
+                    <div class="form-title">活動記録を追加</div>
                     <div class="form-grid">
-                        <div class="form-group"><label>📅 日時 *</label><input id="f-date" type="date" required></div>
-                        <div class="form-group"><label>📍 場所 *</label><input id="f-place" type="text" placeholder="例: 〇〇公園" required></div>
+                        <div class="form-group"><label>日時 *</label><input id="f-date" type="date" required></div>
+                        <div class="form-group"><label>場所 *</label><input id="f-place" type="text" placeholder="例: 〇〇公園" required></div>
                     </div>
                     <div class="form-grid">
-                        <div class="form-group full"><label>👥 参加メンバー *</label><div id="member-checkboxes" class="checkbox-group"></div></div>
+                        <div class="form-group full"><label>参加メンバー *</label><div id="member-checkboxes" class="checkbox-group"></div></div>
                     </div>
                     <div class="form-grid">
-                        <div class="form-group full"><label>🧹 作業内容 *</label><textarea id="f-work" placeholder="清掃内容を記入してください" required></textarea></div>
+                        <div class="form-group full"><label>作業内容 *</label><textarea id="f-work" placeholder="清掃内容を記入してください" required></textarea></div>
                     </div>
                     <div class="form-grid">
-                        <div class="form-group full"><label>📝 その他（メモ）</label><textarea id="f-memo" placeholder="特記事項があればここに記入"></textarea></div>
+                        <div class="form-group full"><label>その他（メモ）</label><textarea id="f-memo" placeholder="特記事項があればここに記入"></textarea></div>
                     </div>
                     <div class="form-grid">
                         <div class="form-group full">
-                            <label>📷 写真（最大5枚）</label>
+                            <label>写真（最大5枚）</label>
                             <div class="photo-input-area">
-                                <label class="photo-input-btn">📷 写真を選択<input id="f-photos" type="file" accept="image/*" multiple></label>
+                                <label class="photo-input-btn">写真を選択<input id="f-photos" type="file" accept="image/*" multiple></label>
                             </div>
                             <div id="f-photo-preview" class="photo-preview"></div>
                             <div id="f-upload-progress" class="upload-progress" style="display:none;"></div>
                         </div>
                     </div>
                     <div class="form-actions">
-                        <button id="submit-btn" type="button" class="btn btn-primary" onclick="addRecord()">➕ 記録を追加</button>
+                        <button id="submit-btn" type="button" class="btn btn-primary" onclick="addRecord()">記録を追加</button>
                         <button type="button" class="btn btn-secondary" onclick="toggleAddForm()">キャンセル</button>
                     </div>
                 </div>
@@ -231,25 +411,31 @@
 
         <!-- Members Panel -->
         <div id="panel-members" class="panel">
+            <div id="character-showcase-area"></div>
             <div class="form-section">
-                <div class="form-title">➕ 新しいメンバーを追加</div>
+                <div class="form-title">新しいメンバーを追加</div>
                 <div class="member-add-row">
                     <input id="new-member" type="text" placeholder="メンバー名を入力">
-                    <button class="btn btn-primary" onclick="addMember()">➕ 追加</button>
+                    <button class="btn btn-primary" onclick="addMember()">追加</button>
                 </div>
             </div>
-            <div id="member-list" class="member-list"></div>
+            <div id="member-list" class="member-grid"></div>
+            <div id="badge-area"></div>
         </div>
 
         <!-- Stats Panel -->
         <div id="panel-stats" class="panel">
+            <div id="goal-area"></div>
             <div class="stats-grid">
                 <div class="stat-card"><div class="stat-num" id="st-total">0</div><div class="stat-label">総活動回数</div></div>
                 <div class="stat-card"><div class="stat-num" id="st-year">0</div><div class="stat-label">今年の活動回数</div></div>
                 <div class="stat-card"><div class="stat-num" id="st-members">0</div><div class="stat-label">登録メンバー数</div></div>
             </div>
-            <div class="ranking-title">🏆 メンバー別参加回数ランキング（今年）</div>
+            <div class="ranking-title">メンバー別参加回数ランキング（今年）</div>
             <div id="ranking-list"></div>
+            <div id="heatmap-area"></div>
+            <div id="impact-area"></div>
+            <div id="encourage-area"></div>
         </div>
     </div>
 
@@ -262,36 +448,42 @@
     <!-- Edit Modal -->
     <div id="edit-modal">
         <div class="modal-content">
-            <div class="form-title" style="margin-bottom: 20px;">✏️ 記録を編集</div>
+            <div class="form-title" style="margin-bottom: 20px;">記録を編集</div>
             <div class="form-grid">
-                <div class="form-group"><label>📅 日付 *</label><input id="e-date" type="date" required></div>
-                <div class="form-group"><label>📍 場所 *</label><input id="e-place" type="text" required></div>
+                <div class="form-group"><label>日付 *</label><input id="e-date" type="date" required></div>
+                <div class="form-group"><label>場所 *</label><input id="e-place" type="text" required></div>
             </div>
             <div class="form-grid">
-                <div class="form-group full"><label>👥 参加メンバー *</label><div id="e-member-checkboxes" class="checkbox-group"></div></div>
+                <div class="form-group full"><label>参加メンバー *</label><div id="e-member-checkboxes" class="checkbox-group"></div></div>
             </div>
             <div class="form-grid">
-                <div class="form-group full"><label>🧹 作業内容 *</label><textarea id="e-work" required></textarea></div>
+                <div class="form-group full"><label>作業内容 *</label><textarea id="e-work" required></textarea></div>
             </div>
             <div class="form-grid">
-                <div class="form-group full"><label>📝 その他（メモ）</label><textarea id="e-memo"></textarea></div>
+                <div class="form-group full"><label>その他（メモ）</label><textarea id="e-memo"></textarea></div>
             </div>
             <div class="form-grid">
                 <div class="form-group full">
-                    <label>📷 写真</label>
+                    <label>写真</label>
                     <div id="e-existing-photos" class="photo-preview"></div>
                     <div class="photo-input-area" style="margin-top:8px;">
-                        <label class="photo-input-btn">📷 写真を追加<input id="e-photos" type="file" accept="image/*" multiple></label>
+                        <label class="photo-input-btn">写真を追加<input id="e-photos" type="file" accept="image/*" multiple></label>
                     </div>
                     <div id="e-photo-preview" class="photo-preview"></div>
                     <div id="e-upload-progress" class="upload-progress" style="display:none;"></div>
                 </div>
             </div>
             <div class="form-actions">
-                <button class="btn btn-primary" onclick="saveEdit()">💾 保存</button>
+                <button class="btn btn-primary" onclick="saveEdit()">保存</button>
                 <button class="btn btn-secondary" onclick="closeEdit()">キャンセル</button>
             </div>
         </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="app-footer">
+        <img src="assets/logo-vertical.png" alt="CleanVibes" class="footer-logo">
+        <div class="footer-text">CleanVibes - 綺麗なまちを後世へ</div>
     </div>
 
     <div id="toast" class="toast"></div>
@@ -308,24 +500,72 @@
         let editPendingPhotos = [];
         let editExistingPhotos = [];
 
-        // === 同期状態 ===
-        function setSyncStatus(s) {
-            const dot = document.getElementById('sync-dot');
-            const label = document.getElementById('sync-label');
-            dot.className = 'sync-dot' + (s === 'loading' ? ' loading' : s === 'error' ? ' error' : '');
-            label.textContent = s === 'loading' ? '同期中…' : s === 'error' ? 'エラー' : '同期済み';
+        // ==========================================
+        // CHARACTER GROWTH SYSTEM
+        // ==========================================
+        const CHARACTER_LEVELS = [
+            { min: 0,  emoji: '🌱', title: 'たねっこ',     desc: '活動を始めよう！', nextAt: 3 },
+            { min: 3,  emoji: '🌿', title: 'わかば',       desc: '芽が出てきた！', nextAt: 6 },
+            { min: 6,  emoji: '🌳', title: 'そだちの木',   desc: 'すくすく成長中！', nextAt: 10 },
+            { min: 10, emoji: '🌸', title: 'はなざかり',   desc: '美しく花開いた！', nextAt: 15 },
+            { min: 15, emoji: '🦋', title: 'はばたき',     desc: '自由に羽ばたく！', nextAt: 20 },
+            { min: 20, emoji: '🐬', title: 'うみのなかま', desc: '海を守る仲間！', nextAt: 30 },
+            { min: 30, emoji: '🦅', title: 'おおぞらの王', desc: '空から街を見守る！', nextAt: 50 },
+            { min: 50, emoji: '🐉', title: 'でんせつ',     desc: '伝説の存在！', nextAt: 75 },
+            { min: 75, emoji: '👑', title: 'キング',       desc: 'CleanVibesの王！', nextAt: 100 },
+            { min: 100,emoji: '🌟', title: 'レジェンド',   desc: '永遠に輝く星！', nextAt: null },
+        ];
+
+        function getCharacterLevel(count) {
+            let level = CHARACTER_LEVELS[0];
+            for (let i = CHARACTER_LEVELS.length - 1; i >= 0; i--) {
+                if (count >= CHARACTER_LEVELS[i].min) { level = CHARACTER_LEVELS[i]; break; }
+            }
+            return level;
         }
 
-        // === クラウド読み込み ===
+        function getProgressToNext(count, level) {
+            if (!level.nextAt) return 100;
+            const range = level.nextAt - level.min;
+            const progress = count - level.min;
+            return Math.min(100, Math.round((progress / range) * 100));
+        }
+
+        // ==========================================
+        // ACHIEVEMENT BADGES
+        // ==========================================
+        const BADGES = [
+            { id: 'first',     icon: '🎉', name: '初参加',     check: (c) => c >= 1 },
+            { id: 'five',      icon: '⭐', name: '5回達成',    check: (c) => c >= 5 },
+            { id: 'ten',       icon: '🏅', name: '10回達成',   check: (c) => c >= 10 },
+            { id: 'twenty',    icon: '💎', name: '20回達成',   check: (c) => c >= 20 },
+            { id: 'fifty',     icon: '🔥', name: '50回達成',   check: (c) => c >= 50 },
+            { id: 'hundred',   icon: '🌟', name: '100回達成',  check: (c) => c >= 100 },
+        ];
+
+        function getEarnedBadges(count) {
+            return BADGES.map(function(b) {
+                return { id: b.id, icon: b.icon, name: b.name, earned: b.check(count) };
+            });
+        }
+
+        // ==========================================
+        // SYNC
+        // ==========================================
+        function setSyncStatus(s) {
+            var dot = document.getElementById('sync-dot');
+            var label = document.getElementById('sync-label');
+            dot.className = 'sync-dot' + (s === 'loading' ? ' loading' : s === 'error' ? ' error' : '');
+            label.textContent = s === 'loading' ? '同期中...' : s === 'error' ? 'エラー' : '同期済み';
+        }
+
         function loadFromCloud() {
             setSyncStatus('loading');
-            return new Promise((resolve) => {
-                const callbackName = 'gasCallback_' + Date.now();
+            return new Promise(function(resolve) {
+                var callbackName = 'gasCallback_' + Date.now();
                 window[callbackName] = function(data) {
                     try {
-                        if (data && Array.isArray(data.records) && Array.isArray(data.members)) {
-                            state = data;
-                        }
+                        if (data && Array.isArray(data.records) && Array.isArray(data.members)) { state = data; }
                         setSyncStatus('ok');
                     } catch(e) { setSyncStatus('error'); }
                     if (script.parentNode) document.head.removeChild(script);
@@ -333,11 +573,11 @@
                     renderAll();
                     resolve();
                 };
-                const script = document.createElement('script');
+                var script = document.createElement('script');
                 script.src = GAS_URL + '?callback=' + callbackName + '&t=' + Date.now();
                 script.onerror = function() {
                     setSyncStatus('error');
-                    showToast('⚠️ データの読み込みに失敗しました');
+                    showToast('データの読み込みに失敗しました');
                     if (script.parentNode) document.head.removeChild(script);
                     delete window[callbackName];
                     renderAll();
@@ -347,31 +587,32 @@
             });
         }
 
-        // === クラウド保存 ===
         async function saveToCloud() {
             setSyncStatus('loading');
             try {
-                const params = new URLSearchParams();
+                var params = new URLSearchParams();
                 params.append('data', JSON.stringify(state));
                 await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
                 setSyncStatus('ok');
             } catch(e) {
                 setSyncStatus('error');
-                showToast('⚠️ 保存に失敗しました');
+                showToast('保存に失敗しました');
             }
         }
 
-        // === 写真リサイズ ===
+        // ==========================================
+        // PHOTOS
+        // ==========================================
         function resizeImage(file, maxWidth, quality) {
             maxWidth = maxWidth || 1200;
             quality = quality || 0.7;
-            return new Promise((resolve) => {
-                const reader = new FileReader();
+            return new Promise(function(resolve) {
+                var reader = new FileReader();
                 reader.onload = function(e) {
-                    const img = new Image();
+                    var img = new Image();
                     img.onload = function() {
-                        const canvas = document.createElement('canvas');
-                        let w = img.width, h = img.height;
+                        var canvas = document.createElement('canvas');
+                        var w = img.width, h = img.height;
                         if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
                         canvas.width = w; canvas.height = h;
                         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
@@ -383,63 +624,47 @@
             });
         }
 
-        // === 写真アップロード ===
         function uploadImageToCloud(base64Data, uploadId) {
-            return new Promise(async (resolve, reject) => {
+            return new Promise(async function(resolve, reject) {
                 try {
-                    const params = new URLSearchParams();
+                    var params = new URLSearchParams();
                     params.append('action', 'upload_image');
                     params.append('image', base64Data);
                     params.append('uploadId', uploadId);
                     await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
-                } catch(e) {
-                    reject('送信失敗');
-                    return;
-                }
-                // ポーリングで結果を取得
-                let attempts = 0;
-                const maxAttempts = 40;
-                const poll = function() {
-                    const cbName = 'upChk_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
+                } catch(e) { reject('送信失敗'); return; }
+                var attempts = 0, maxAttempts = 40;
+                var poll = function() {
+                    var cbName = 'upChk_' + Date.now() + '_' + Math.random().toString(36).slice(2,6);
                     window[cbName] = function(data) {
                         delete window[cbName];
                         if (scr.parentNode) document.head.removeChild(scr);
-                        if (data && data.status === 'done' && data.url) {
-                            resolve(data.url);
-                        } else if (++attempts < maxAttempts) {
-                            setTimeout(poll, 2000);
-                        } else {
-                            reject('タイムアウト');
-                        }
+                        if (data && data.status === 'done' && data.url) { resolve(data.url); }
+                        else if (++attempts < maxAttempts) { setTimeout(poll, 2000); }
+                        else { reject('タイムアウト'); }
                     };
                     var scr = document.createElement('script');
                     scr.src = GAS_URL + '?check_upload=' + encodeURIComponent(uploadId) + '&callback=' + cbName + '&t=' + Date.now();
-                    scr.onerror = function() {
-                        delete window[cbName];
-                        if (scr.parentNode) document.head.removeChild(scr);
-                        if (++attempts < maxAttempts) setTimeout(poll, 2000);
-                        else reject('通信エラー');
-                    };
+                    scr.onerror = function() { delete window[cbName]; if (scr.parentNode) document.head.removeChild(scr); if (++attempts < maxAttempts) setTimeout(poll, 2000); else reject('通信エラー'); };
                     document.head.appendChild(scr);
                 };
                 setTimeout(poll, 3000);
             });
         }
 
-        // === 写真プレビュー（追加フォーム） ===
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('f-photos').addEventListener('change', handleAddPhotos);
             document.getElementById('e-photos').addEventListener('change', handleEditPhotos);
         });
 
         async function handleAddPhotos(e) {
-            const files = [...e.target.files].slice(0, 5 - pendingPhotos.length);
-            const preview = document.getElementById('f-photo-preview');
-            for (const file of files) {
-                const base64 = await resizeImage(file);
-                const idx = pendingPhotos.length;
+            var files = [...e.target.files].slice(0, 5 - pendingPhotos.length);
+            var preview = document.getElementById('f-photo-preview');
+            for (var file of files) {
+                var base64 = await resizeImage(file);
+                var idx = pendingPhotos.length;
                 pendingPhotos.push(base64);
-                const div = document.createElement('div');
+                var div = document.createElement('div');
                 div.className = 'photo-preview-item';
                 div.innerHTML = '<img src="' + base64 + '"><button class="remove-photo" onclick="removeAddPhoto(' + idx + ')">✕</button>';
                 preview.appendChild(div);
@@ -447,17 +672,14 @@
             e.target.value = '';
         }
 
-        function removeAddPhoto(idx) {
-            pendingPhotos[idx] = null;
-            renderAddPhotoPreview();
-        }
+        function removeAddPhoto(idx) { pendingPhotos[idx] = null; renderAddPhotoPreview(); }
 
         function renderAddPhotoPreview() {
-            const preview = document.getElementById('f-photo-preview');
+            var preview = document.getElementById('f-photo-preview');
             preview.innerHTML = '';
             pendingPhotos.forEach(function(p, i) {
                 if (!p) return;
-                const div = document.createElement('div');
+                var div = document.createElement('div');
                 div.className = 'photo-preview-item';
                 div.innerHTML = '<img src="' + p + '"><button class="remove-photo" onclick="removeAddPhoto(' + i + ')">✕</button>';
                 preview.appendChild(div);
@@ -465,50 +687,42 @@
         }
 
         async function handleEditPhotos(e) {
-            const totalExisting = editExistingPhotos.filter(function(p) { return p; }).length;
-            const totalPending = editPendingPhotos.filter(function(p) { return p; }).length;
-            const remaining = 5 - totalExisting - totalPending;
-            const files = [...e.target.files].slice(0, remaining);
-            for (const file of files) {
-                const base64 = await resizeImage(file);
-                editPendingPhotos.push(base64);
-            }
+            var totalExisting = editExistingPhotos.filter(function(p) { return p; }).length;
+            var totalPending = editPendingPhotos.filter(function(p) { return p; }).length;
+            var remaining = 5 - totalExisting - totalPending;
+            var files = [...e.target.files].slice(0, remaining);
+            for (var file of files) { var base64 = await resizeImage(file); editPendingPhotos.push(base64); }
             renderEditPhotoPreview();
             e.target.value = '';
         }
 
-        function removeEditExistingPhoto(idx) {
-            editExistingPhotos[idx] = null;
-            renderEditPhotoPreview();
-        }
-
-        function removeEditPendingPhoto(idx) {
-            editPendingPhotos[idx] = null;
-            renderEditPhotoPreview();
-        }
+        function removeEditExistingPhoto(idx) { editExistingPhotos[idx] = null; renderEditPhotoPreview(); }
+        function removeEditPendingPhoto(idx) { editPendingPhotos[idx] = null; renderEditPhotoPreview(); }
 
         function renderEditPhotoPreview() {
-            const existing = document.getElementById('e-existing-photos');
+            var existing = document.getElementById('e-existing-photos');
             existing.innerHTML = '';
             editExistingPhotos.forEach(function(url, i) {
                 if (!url) return;
-                const div = document.createElement('div');
+                var div = document.createElement('div');
                 div.className = 'photo-preview-item';
                 div.innerHTML = '<img src="' + url + '"><button class="remove-photo" onclick="removeEditExistingPhoto(' + i + ')">✕</button>';
                 existing.appendChild(div);
             });
-            const preview = document.getElementById('e-photo-preview');
+            var preview = document.getElementById('e-photo-preview');
             preview.innerHTML = '';
             editPendingPhotos.forEach(function(p, i) {
                 if (!p) return;
-                const div = document.createElement('div');
+                var div = document.createElement('div');
                 div.className = 'photo-preview-item';
                 div.innerHTML = '<img src="' + p + '"><button class="remove-photo" onclick="removeEditPendingPhoto(' + i + ')">✕</button>';
                 preview.appendChild(div);
             });
         }
 
-        // === タブ切替 ===
+        // ==========================================
+        // TABS
+        // ==========================================
         function switchTab(name) {
             ['records', 'members', 'stats'].forEach(function(n, i) {
                 document.querySelectorAll('.tab')[i].classList.toggle('active', n === name);
@@ -521,15 +735,17 @@
             if (name === 'members') renderMembers();
         }
 
-        // === 記録追加フォーム ===
+        // ==========================================
+        // ADD RECORD
+        // ==========================================
         function toggleAddForm() {
-            const f = document.getElementById('add-form');
-            const btn = document.getElementById('add-toggle');
-            const visible = f.style.display !== 'none';
+            var f = document.getElementById('add-form');
+            var btn = document.getElementById('add-toggle');
+            var visible = f.style.display !== 'none';
             f.style.display = visible ? 'none' : 'block';
-            btn.textContent = visible ? '➕ 記録を追加' : '✖ 閉じる';
+            btn.textContent = visible ? '+ 記録を追加' : '✖ 閉じる';
             if (!visible) {
-                const now = new Date();
+                var now = new Date();
                 now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
                 document.getElementById('f-date').value = now.toISOString().slice(0, 10);
                 renderMemberCheckboxes();
@@ -540,51 +756,38 @@
         }
 
         function renderMemberCheckboxes() {
-            const c = document.getElementById('member-checkboxes');
+            var c = document.getElementById('member-checkboxes');
             c.innerHTML = state.members.length === 0
                 ? '<span style="color:var(--gray-400);font-size:.85rem;">まずメンバーを登録してください</span>'
                 : state.members.map(function(m) { return '<label class="checkbox-label"><input type="checkbox" value="' + m + '"> ' + m + '</label>'; }).join('');
         }
 
-        // === 記録追加 ===
         async function addRecord() {
-            const date = document.getElementById('f-date').value;
-            const place = document.getElementById('f-place').value.trim();
-            const work = document.getElementById('f-work').value.trim();
-            const memo = document.getElementById('f-memo').value.trim();
-            const members = [...document.querySelectorAll('#member-checkboxes input:checked')].map(function(c) { return c.value; });
+            var date = document.getElementById('f-date').value;
+            var place = document.getElementById('f-place').value.trim();
+            var work = document.getElementById('f-work').value.trim();
+            var memo = document.getElementById('f-memo').value.trim();
+            var members = [...document.querySelectorAll('#member-checkboxes input:checked')].map(function(c) { return c.value; });
+            if (!date || !place || !work || members.length === 0) { showToast('日時・場所・メンバー・作業内容は必須です'); return; }
 
-            if (!date || !place || !work || members.length === 0) {
-                showToast('⚠️ 日時・場所・メンバー・作業内容は必須です');
-                return;
-            }
-
-            const btn = document.getElementById('submit-btn');
+            var btn = document.getElementById('submit-btn');
             btn.disabled = true;
-            const progress = document.getElementById('f-upload-progress');
-
-            // 写真アップロード
-            const photos = pendingPhotos.filter(function(p) { return p; });
-            const photoUrls = [];
+            var progress = document.getElementById('f-upload-progress');
+            var photos = pendingPhotos.filter(function(p) { return p; });
+            var photoUrls = [];
             if (photos.length > 0) {
                 progress.style.display = 'block';
-                for (let i = 0; i < photos.length; i++) {
-                    progress.textContent = '📷 写真アップロード中 (' + (i + 1) + '/' + photos.length + ')…';
-                    btn.textContent = '📷 ' + (i + 1) + '/' + photos.length + ' アップロード中…';
-                    try {
-                        const uploadId = 'img_' + Date.now() + '_' + i;
-                        const url = await uploadImageToCloud(photos[i], uploadId);
-                        photoUrls.push(url);
-                    } catch(e) {
-                        showToast('⚠️ 写真' + (i + 1) + 'のアップロードに失敗しました');
-                    }
+                for (var i = 0; i < photos.length; i++) {
+                    progress.textContent = '写真アップロード中 (' + (i + 1) + '/' + photos.length + ')...';
+                    btn.textContent = (i + 1) + '/' + photos.length + ' アップロード中...';
+                    try { var uploadId = 'img_' + Date.now() + '_' + i; var url = await uploadImageToCloud(photos[i], uploadId); photoUrls.push(url); }
+                    catch(e) { showToast('写真' + (i + 1) + 'のアップロードに失敗しました'); }
                 }
             }
+            btn.textContent = '保存中...';
+            progress.textContent = 'データ保存中...';
 
-            btn.textContent = '保存中…';
-            progress.textContent = '💾 データ保存中…';
-
-            const record = { id: Date.now(), date: date, place: place, work: work, memo: memo, members: members };
+            var record = { id: Date.now(), date: date, place: place, work: work, memo: memo, members: members };
             if (photoUrls.length > 0) record.photos = photoUrls;
             state.records.unshift(record);
             await saveToCloud();
@@ -596,14 +799,12 @@
             pendingPhotos = [];
             document.getElementById('f-photo-preview').innerHTML = '';
             progress.style.display = 'none';
-
             btn.disabled = false;
-            btn.textContent = '➕ 記録を追加';
+            btn.textContent = '記録を追加';
             toggleAddForm();
-            showToast('✅ 記録を追加しました！');
+            showToast('記録を追加しました！');
         }
 
-        // === 記録削除 ===
         async function deleteRecord(id) {
             if (!checkAdmin()) return;
             if (!confirm('この記録を削除しますか？')) return;
@@ -611,100 +812,81 @@
             await saveToCloud();
             renderRecords();
             updateHeaderCount();
-            showToast('🗑 記録を削除しました');
+            showToast('記録を削除しました');
         }
 
-        // === 記録描画 ===
+        // ==========================================
+        // RENDER RECORDS
+        // ==========================================
         function renderRecords() {
-            const list = document.getElementById('records-list');
+            var list = document.getElementById('records-list');
             if (state.records.length === 0) {
                 list.innerHTML = '<div class="empty"><div class="empty-icon">🧹</div><div class="empty-text">まだ記録がありません<br>「記録を追加」から活動を記録しましょう！</div></div>';
                 return;
             }
-            const sorted = [...state.records].sort(function(a, b) {
-                const da = new Date((a.date.includes('T') ? a.date.split('T')[0] : a.date) + 'T00:00:00');
-                const db = new Date((b.date.includes('T') ? b.date.split('T')[0] : b.date) + 'T00:00:00');
+            var sorted = [...state.records].sort(function(a, b) {
+                var da = new Date((a.date.includes('T') ? a.date.split('T')[0] : a.date) + 'T00:00:00');
+                var db = new Date((b.date.includes('T') ? b.date.split('T')[0] : b.date) + 'T00:00:00');
                 return sortOrder === 'desc' ? db - da : da - db;
             });
             list.innerHTML = sorted.map(function(r) {
-                const dateStr = r.date.includes('T') ? r.date.split('T')[0] : r.date;
-                const d = new Date(dateStr + 'T00:00:00');
-                const ds = d.getFullYear() + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getDate()).padStart(2, '0');
-                const tags = r.members.map(function(m) { return '<span class="tag">👤 ' + m + '</span>'; }).join('');
-                const photosHtml = (r.photos && r.photos.length > 0)
+                var dateStr = r.date.includes('T') ? r.date.split('T')[0] : r.date;
+                var d = new Date(dateStr + 'T00:00:00');
+                var ds = d.getFullYear() + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getDate()).padStart(2, '0');
+                var tags = r.members.map(function(m) { return '<span class="tag">' + m + '</span>'; }).join('');
+                var photosHtml = (r.photos && r.photos.length > 0)
                     ? '<div class="photo-grid">' + r.photos.map(function(url) {
-                        const fullUrl = url.replace('sz=w800', 'sz=w1600');
+                        var fullUrl = url.replace('sz=w800', 'sz=w1600');
                         return '<img src="' + url + '" onclick="openLightbox(\'' + fullUrl + '\')" loading="lazy">';
-                      }).join('') + '</div>'
-                    : '';
-                const adminBtns = isAdmin
-                    ? '<div style="position:absolute;top:12px;right:12px;display:flex;gap:6px;"><button class="edit-btn" onclick="openEdit(' + r.id + ')" title="編集">✏️</button><button class="delete-btn" style="position:static;" onclick="deleteRecord(' + r.id + ')" title="削除">✕</button></div>'
-                    : '';
+                      }).join('') + '</div>' : '';
+                var adminBtns = isAdmin
+                    ? '<div style="position:absolute;top:12px;right:12px;display:flex;gap:6px;"><button class="edit-btn" onclick="openEdit(' + r.id + ')" title="編集">✏️</button><button class="delete-btn" style="position:static;" onclick="deleteRecord(' + r.id + ')" title="削除">✕</button></div>' : '';
                 return '<div class="card">' + adminBtns +
-                    '<div class="card-header"><span class="card-date">' + ds + '</span><span class="card-location">📍 ' + r.place + '</span></div>' +
-                    '<div class="card-meta"><div>🧹 ' + r.work + '</div>' +
-                    (r.memo ? '<div>📝 ' + r.memo + '</div>' : '') +
+                    '<div class="card-header"><span class="card-date">' + ds + '</span><span class="card-location">' + r.place + '</span></div>' +
+                    '<div class="card-meta"><div>' + r.work + '</div>' +
+                    (r.memo ? '<div style="color:var(--gray-400);font-size:0.8rem;margin-top:4px;">' + r.memo + '</div>' : '') +
                     '<div style="margin-top:6px">' + tags + '</div>' +
                     photosHtml + '</div></div>';
             }).join('');
         }
 
-        // === ライトボックス ===
         function openLightbox(url) {
-            const overlay = document.createElement('div');
+            var overlay = document.createElement('div');
             overlay.className = 'lightbox';
             overlay.innerHTML = '<button class="lightbox-close">✕</button><img src="' + url + '">';
             overlay.onclick = function() { overlay.remove(); };
             document.body.appendChild(overlay);
         }
 
-        // === 管理者 ===
-        function checkAdmin() {
-            if (isAdmin) return true;
-            isAdmin = true;
-            renderRecords();
-            renderMembers();
-            showToast('✅ 管理者としてログインしました');
-            return true;
-        }
-
+        // ==========================================
+        // ADMIN
+        // ==========================================
+        function checkAdmin() { if (isAdmin) return true; isAdmin = true; renderRecords(); renderMembers(); showToast('管理者としてログインしました'); return true; }
         function toggleAdmin() {
-            if (isAdmin) {
-                isAdmin = false;
-                document.getElementById('admin-btn').textContent = '🔒 管理者';
-                document.getElementById('admin-btn').style.color = 'var(--gray-400)';
-                document.getElementById('admin-btn').style.borderColor = 'var(--gray-200)';
-                renderRecords(); renderMembers();
-                showToast('🔒 管理者からログアウトしました');
-            } else {
-                checkAdmin();
-                if (isAdmin) {
-                    document.getElementById('admin-btn').textContent = '🔓 管理者';
-                    document.getElementById('admin-btn').style.color = 'var(--ocean)';
-                    document.getElementById('admin-btn').style.borderColor = 'var(--ocean)';
-                }
-            }
+            if (isAdmin) { isAdmin = false; renderRecords(); renderMembers(); showToast('管理者からログアウトしました'); }
+            else { checkAdmin(); }
         }
 
-        // === ソート ===
         function toggleSort() {
             sortOrder = sortOrder === 'desc' ? 'asc' : 'desc';
-            document.getElementById('sort-btn').textContent = sortOrder === 'desc' ? '🔽 新しい順' : '🔼 古い順';
+            document.getElementById('sort-btn').textContent = sortOrder === 'desc' ? '新しい順' : '古い順';
             renderRecords();
         }
 
-        // === 編集 ===
+        // ==========================================
+        // EDIT
+        // ==========================================
         function openEdit(id) {
             if (!checkAdmin()) return;
-            const r = state.records.find(function(r) { return r.id === id; });
+            var r = state.records.find(function(r) { return r.id === id; });
             if (!r) return;
             editingId = id;
-            const dateStr = r.date.includes('T') ? r.date.split('T')[0] : r.date;
+            var dateStr = r.date.includes('T') ? r.date.split('T')[0] : r.date;
             document.getElementById('e-date').value = dateStr;
             document.getElementById('e-place').value = r.place;
             document.getElementById('e-work').value = r.work;
             document.getElementById('e-memo').value = r.memo || '';
-            const c = document.getElementById('e-member-checkboxes');
+            var c = document.getElementById('e-member-checkboxes');
             c.innerHTML = state.members.length === 0
                 ? '<span style="color:var(--gray-400);font-size:.85rem;">メンバーが登録されていません</span>'
                 : state.members.map(function(m) { return '<label class="checkbox-label"><input type="checkbox" value="' + m + '"' + (r.members.includes(m) ? ' checked' : '') + '> ' + m + '</label>'; }).join('');
@@ -715,72 +897,56 @@
             document.getElementById('edit-modal').style.display = 'flex';
         }
 
-        function closeEdit() {
-            document.getElementById('edit-modal').style.display = 'none';
-            editingId = null;
-        }
+        function closeEdit() { document.getElementById('edit-modal').style.display = 'none'; editingId = null; }
 
         async function saveEdit() {
-            const date = document.getElementById('e-date').value;
-            const place = document.getElementById('e-place').value.trim();
-            const work = document.getElementById('e-work').value.trim();
-            const memo = document.getElementById('e-memo').value.trim();
-            const members = [...document.querySelectorAll('#e-member-checkboxes input:checked')].map(function(c) { return c.value; });
+            var date = document.getElementById('e-date').value;
+            var place = document.getElementById('e-place').value.trim();
+            var work = document.getElementById('e-work').value.trim();
+            var memo = document.getElementById('e-memo').value.trim();
+            var members = [...document.querySelectorAll('#e-member-checkboxes input:checked')].map(function(c) { return c.value; });
+            if (!date || !place || !work || members.length === 0) { showToast('日付・場所・メンバー・作業内容は必須です'); return; }
 
-            if (!date || !place || !work || members.length === 0) {
-                showToast('⚠️ 日付・場所・メンバー・作業内容は必須です');
-                return;
-            }
-
-            const progress = document.getElementById('e-upload-progress');
-            const newPhotos = editPendingPhotos.filter(function(p) { return p; });
-            const newPhotoUrls = [];
-
+            var progress = document.getElementById('e-upload-progress');
+            var newPhotos = editPendingPhotos.filter(function(p) { return p; });
+            var newPhotoUrls = [];
             if (newPhotos.length > 0) {
                 progress.style.display = 'block';
-                for (let i = 0; i < newPhotos.length; i++) {
-                    progress.textContent = '📷 写真アップロード中 (' + (i + 1) + '/' + newPhotos.length + ')…';
-                    try {
-                        const uploadId = 'img_' + Date.now() + '_' + i;
-                        const url = await uploadImageToCloud(newPhotos[i], uploadId);
-                        newPhotoUrls.push(url);
-                    } catch(e) {
-                        showToast('⚠️ 写真' + (i + 1) + 'のアップロードに失敗しました');
-                    }
+                for (var i = 0; i < newPhotos.length; i++) {
+                    progress.textContent = '写真アップロード中 (' + (i + 1) + '/' + newPhotos.length + ')...';
+                    try { var uploadId = 'img_' + Date.now() + '_' + i; var url = await uploadImageToCloud(newPhotos[i], uploadId); newPhotoUrls.push(url); }
+                    catch(e) { showToast('写真' + (i + 1) + 'のアップロードに失敗しました'); }
                 }
             }
-
-            const allPhotos = editExistingPhotos.filter(function(p) { return p; }).concat(newPhotoUrls);
-
-            const idx = state.records.findIndex(function(r) { return r.id === editingId; });
+            var allPhotos = editExistingPhotos.filter(function(p) { return p; }).concat(newPhotoUrls);
+            var idx = state.records.findIndex(function(r) { return r.id === editingId; });
             if (idx !== -1) {
-                state.records[idx] = Object.assign({}, state.records[idx], {
-                    date: date, place: place, work: work, memo: memo, members: members,
-                    photos: allPhotos.length > 0 ? allPhotos : undefined
-                });
+                state.records[idx] = Object.assign({}, state.records[idx], { date: date, place: place, work: work, memo: memo, members: members, photos: allPhotos.length > 0 ? allPhotos : undefined });
                 if (allPhotos.length === 0) delete state.records[idx].photos;
-                progress.textContent = '💾 保存中…';
+                progress.textContent = '保存中...';
                 await saveToCloud();
                 renderRecords();
                 updateHeaderCount();
-                showToast('✅ 記録を更新しました！');
+                showToast('記録を更新しました！');
             }
             progress.style.display = 'none';
             closeEdit();
         }
 
-        // === メンバー ===
+        // ==========================================
+        // MEMBERS (with Character Cards)
+        // ==========================================
         async function addMember() {
-            const inp = document.getElementById('new-member');
-            const name = inp.value.trim();
+            var inp = document.getElementById('new-member');
+            var name = inp.value.trim();
             if (!name) return;
-            if (state.members.includes(name)) { showToast('⚠️ 同じ名前のメンバーが既に存在します'); return; }
+            if (state.members.includes(name)) { showToast('同じ名前のメンバーが既に存在します'); return; }
             state.members.push(name);
             state.members.sort(function(a, b) { return a.localeCompare(b, 'ja'); });
             inp.value = '';
             await saveToCloud();
             renderMembers();
-            showToast('✅ ' + name + ' を追加しました');
+            showToast(name + ' を追加しました');
         }
 
         async function deleteMember(name) {
@@ -789,76 +955,276 @@
             state.members = state.members.filter(function(m) { return m !== name; });
             await saveToCloud();
             renderMembers();
-            showToast('🗑 ' + name + ' を削除しました');
+            showToast(name + ' を削除しました');
         }
 
-        function renderMembers() {
-            const list = document.getElementById('member-list');
-            if (state.members.length === 0) {
-                list.innerHTML = '<div class="empty" style="width:100%"><div class="empty-icon">👤</div><div class="empty-text">メンバーが登録されていません</div></div>';
-                return;
-            }
-            const year = new Date().getFullYear();
-            const counts = {};
+        function getMemberCounts() {
+            var year = new Date().getFullYear();
+            var counts = {};
             state.records.filter(function(r) { return new Date(r.date).getFullYear() === year; }).forEach(function(r) {
                 r.members.forEach(function(m) { counts[m] = (counts[m] || 0) + 1; });
             });
-            const sorted = [...state.members].sort(function(a, b) { return (counts[b] || 0) - (counts[a] || 0); });
-            list.innerHTML = sorted.map(function(m) {
-                return '<div class="member-chip">👤 ' + m + ' <button onclick="deleteMember(\'' + m + '\')" title="削除">✕</button></div>';
-            }).join('');
+            return counts;
         }
 
-        // === 集計 ===
+        function renderMembers() {
+            var list = document.getElementById('member-list');
+            var showcase = document.getElementById('character-showcase-area');
+            var badgeArea = document.getElementById('badge-area');
+
+            if (state.members.length === 0) {
+                list.innerHTML = '<div class="empty" style="grid-column:1/-1;"><div class="empty-icon">👤</div><div class="empty-text">メンバーが登録されていません</div></div>';
+                showcase.innerHTML = '';
+                badgeArea.innerHTML = '';
+                return;
+            }
+
+            var counts = getMemberCounts();
+            var totalCount = Object.values(counts).reduce(function(a, b) { return a + b; }, 0);
+            var topMember = state.members.reduce(function(top, m) { return (counts[m] || 0) > (counts[top] || 0) ? m : top; }, state.members[0]);
+            var topLevel = getCharacterLevel(counts[topMember] || 0);
+
+            // Character Showcase
+            showcase.innerHTML = '<div class="character-showcase"><div class="showcase-content">' +
+                '<span class="showcase-char">' + topLevel.emoji + '</span>' +
+                '<div class="showcase-title">チームの総活動: ' + totalCount + ' 回</div>' +
+                '<div class="showcase-subtitle">みんなで綺麗なまちを作ろう！</div>' +
+                '</div></div>';
+
+            // Member Cards with Characters
+            var sorted = [...state.members].sort(function(a, b) { return (counts[b] || 0) - (counts[a] || 0); });
+            list.innerHTML = sorted.map(function(m) {
+                var cnt = counts[m] || 0;
+                var level = getCharacterLevel(cnt);
+                var progress = getProgressToNext(cnt, level);
+                var nextInfo = level.nextAt ? '次: ' + level.nextAt + '回 (' + level.emoji + ' → ' + getCharacterLevel(level.nextAt).emoji + ')' : 'MAX!';
+                var deleteBtn = isAdmin ? '<button class="delete-member-btn" onclick="deleteMember(\'' + m.replace(/'/g, "\\'") + '\')">削除</button>' : '';
+                return '<div class="member-card">' +
+                    '<span class="char-avatar">' + level.emoji + '</span>' +
+                    '<div class="char-name">' + m + '</div>' +
+                    '<div class="char-title">' + level.title + '</div>' +
+                    '<div class="char-count">' + cnt + ' 回参加</div>' +
+                    '<div class="char-bar"><div class="char-bar-fill" style="width:' + progress + '%"></div></div>' +
+                    '<div class="char-next">' + nextInfo + '</div>' +
+                    deleteBtn + '</div>';
+            }).join('');
+
+            // Badges for all members combined
+            var allBadgesHtml = '';
+            sorted.forEach(function(m) {
+                var cnt = counts[m] || 0;
+                var badges = getEarnedBadges(cnt);
+                var earned = badges.filter(function(b) { return b.earned; });
+                if (earned.length > 0) {
+                    allBadgesHtml += '<div style="margin-bottom:8px;"><span style="font-weight:700;font-size:0.85rem;color:var(--deep);">' + m + ':</span> ' +
+                        earned.map(function(b) { return '<span class="badge earned"><span class="badge-icon">' + b.icon + '</span>' + b.name + '</span>'; }).join(' ') + '</div>';
+                }
+            });
+            if (allBadgesHtml) {
+                badgeArea.innerHTML = '<div class="badge-section"><div class="badge-title">獲得バッジ</div>' + allBadgesHtml + '</div>';
+            } else {
+                badgeArea.innerHTML = '';
+            }
+        }
+
+        // ==========================================
+        // STATS
+        // ==========================================
         function renderStats() {
-            const year = new Date().getFullYear();
-            const yr = state.records.filter(function(r) { return new Date(r.date).getFullYear() === year; });
+            var year = new Date().getFullYear();
+            var yr = state.records.filter(function(r) { return new Date(r.date).getFullYear() === year; });
             document.getElementById('st-total').textContent = state.records.length;
             document.getElementById('st-year').textContent = yr.length;
             document.getElementById('st-members').textContent = state.members.length;
-            const counts = {};
-            const excludeFromRanking = ['大竹'];
+
+            // Monthly Goal
+            renderGoal(yr);
+
+            // Ranking
+            var counts = {};
+            var excludeFromRanking = ['大竹'];
             yr.forEach(function(r) { r.members.forEach(function(m) { if (!excludeFromRanking.includes(m)) counts[m] = (counts[m] || 0) + 1; }); });
-            const sorted = Object.entries(counts).sort(function(a, b) { return b[1] - a[1]; });
-            const max = sorted[0] ? sorted[0][1] : 1;
-            const medals = ['🥇', '🥈', '🥉'];
-            const rc = ['rank-1', 'rank-2', 'rank-3'];
-            const rl = document.getElementById('ranking-list');
+            var sorted = Object.entries(counts).sort(function(a, b) { return b[1] - a[1]; });
+            var max = sorted[0] ? sorted[0][1] : 1;
+            var medals = ['🥇', '🥈', '🥉'];
+            var rc = ['rank-1', 'rank-2', 'rank-3'];
+            var rl = document.getElementById('ranking-list');
             if (sorted.length === 0) {
                 rl.innerHTML = '<div class="empty"><div class="empty-icon">🏆</div><div class="empty-text">まだ今年の記録がありません</div></div>';
-                return;
+            } else {
+                rl.innerHTML = sorted.map(function(entry, i) {
+                    var name = entry[0], cnt = entry[1];
+                    var pct = Math.round(cnt / max * 100);
+                    var level = getCharacterLevel(cnt);
+                    var badge = i < 3 ? '<span class="rank-badge ' + rc[i] + '">' + medals[i] + '</span>' : '<span class="rank-badge rank-n">' + (i + 1) + '</span>';
+                    var charDisplay = '<div class="rank-character"><span class="character-display">' + level.emoji + '</span><span class="character-level">' + level.title + '</span></div>';
+                    return '<div class="rank-item">' + badge +
+                        '<div class="rank-item-inner"><div style="display:flex;align-items:center;gap:8px;"><span class="rank-name">' + name + '</span>' + charDisplay + '</div>' +
+                        '<div class="rank-bar-bg"><div class="rank-bar" style="width:' + pct + '%"></div></div></div>' +
+                        '<span class="rank-count">' + cnt + '</span></div>';
+                }).join('');
             }
-            rl.innerHTML = sorted.map(function(entry, i) {
-                var name = entry[0], cnt = entry[1];
-                const pct = Math.round(cnt / max * 100);
-                const badge = i < 3 ? '<span class="rank-badge ' + rc[i] + '">' + medals[i] + '</span>' : '<span class="rank-badge rank-n">' + (i + 1) + '</span>';
-                return '<div class="rank-item">' + badge + '<div class="rank-item-inner"><div class="rank-name">' + name + '</div><div class="rank-bar-bg"><div class="rank-bar" style="width:' + pct + '%"></div></div></div><span class="rank-count">' + cnt + '</span></div>';
-            }).join('');
+
+            // Heatmap
+            renderHeatmap(yr);
+
+            // Environmental Impact
+            renderImpact(yr);
+
+            // Encouragement
+            renderEncouragement(yr, sorted);
+        }
+
+        function renderGoal(yr) {
+            var area = document.getElementById('goal-area');
+            var month = new Date().getMonth();
+            var monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+            var goal = 4; // Monthly goal: 4 activities
+            var thisMonth = yr.filter(function(r) {
+                return new Date(r.date).getMonth() === month;
+            }).length;
+            var pct = Math.min(100, Math.round((thisMonth / goal) * 100));
+            area.innerHTML = '<div class="goal-section">' +
+                '<div class="goal-title">' + monthNames[month] + 'の目標</div>' +
+                '<div class="goal-progress-bar"><div class="goal-progress-fill" style="width:' + pct + '%"></div></div>' +
+                '<div class="goal-text"><span>' + thisMonth + ' / ' + goal + ' 回達成</span><span>' + (thisMonth >= goal ? '目標達成！🎉' : 'あと ' + (goal - thisMonth) + ' 回！') + '</span></div>' +
+                '</div>';
+        }
+
+        function renderHeatmap(yr) {
+            var area = document.getElementById('heatmap-area');
+            var dateCounts = {};
+            yr.forEach(function(r) {
+                var ds = r.date.includes('T') ? r.date.split('T')[0] : r.date;
+                dateCounts[ds] = (dateCounts[ds] || 0) + 1;
+            });
+
+            var now = new Date();
+            var year = now.getFullYear();
+            var months = [];
+            for (var m = 0; m < 12; m++) {
+                var weeks = [];
+                var firstDay = new Date(year, m, 1);
+                var lastDay = new Date(year, m + 1, 0);
+                var currentWeek = [];
+                // Pad start
+                for (var pad = 0; pad < firstDay.getDay(); pad++) { currentWeek.push(null); }
+                for (var d = 1; d <= lastDay.getDate(); d++) {
+                    var dateStr = year + '-' + String(m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+                    var count = dateCounts[dateStr] || 0;
+                    var lvl = count === 0 ? 0 : count === 1 ? 1 : count === 2 ? 2 : count <= 3 ? 3 : 4;
+                    currentWeek.push(lvl);
+                    if (currentWeek.length === 7) { weeks.push(currentWeek); currentWeek = []; }
+                }
+                if (currentWeek.length > 0) { while (currentWeek.length < 7) currentWeek.push(null); weeks.push(currentWeek); }
+                months.push({ name: (m + 1) + '月', weeks: weeks });
+            }
+
+            var html = '<div class="heatmap-section"><div class="heatmap-title">活動カレンダー（' + year + '年）</div><div class="heatmap-months">';
+            months.forEach(function(mo) {
+                html += '<div class="heatmap-month"><div class="heatmap-month-label">' + mo.name + '</div><div class="heatmap-weeks">';
+                mo.weeks.forEach(function(week) {
+                    html += '<div class="heatmap-week">';
+                    week.forEach(function(lvl) {
+                        if (lvl === null) html += '<div class="heatmap-day" style="visibility:hidden;"></div>';
+                        else html += '<div class="heatmap-day' + (lvl > 0 ? ' level-' + lvl : '') + '"></div>';
+                    });
+                    html += '</div>';
+                });
+                html += '</div></div>';
+            });
+            html += '</div>';
+            html += '<div class="heatmap-legend">少ない <div class="heatmap-legend-box" style="background:var(--gray-200);"></div><div class="heatmap-legend-box" style="background:#bae6fd;"></div><div class="heatmap-legend-box" style="background:#38bdf8;"></div><div class="heatmap-legend-box" style="background:#0284c7;"></div><div class="heatmap-legend-box" style="background:#075985;"></div> 多い</div>';
+            html += '</div>';
+            area.innerHTML = html;
+        }
+
+        function renderImpact(yr) {
+            var area = document.getElementById('impact-area');
+            var totalActivities = yr.length;
+            // Estimated environmental impact
+            var trashBags = totalActivities * 3; // ~3 bags per activity
+            var areaCleaned = totalActivities * 500; // ~500m2 per activity
+            var co2Saved = (totalActivities * 2.5).toFixed(1); // estimated kg CO2
+
+            area.innerHTML = '<div class="impact-section">' +
+                '<div class="impact-title">推定環境インパクト（今年）</div>' +
+                '<div class="impact-grid">' +
+                '<div class="impact-item"><div class="impact-num">' + trashBags + '</div><div class="impact-label">ゴミ袋（推定）</div></div>' +
+                '<div class="impact-item"><div class="impact-num">' + (areaCleaned >= 1000 ? (areaCleaned / 1000).toFixed(1) + 'k' : areaCleaned) + '</div><div class="impact-label">m² 清掃面積</div></div>' +
+                '<div class="impact-item"><div class="impact-num">' + co2Saved + '</div><div class="impact-label">kg CO2削減</div></div>' +
+                '</div></div>';
+        }
+
+        function renderEncouragement(yr, sorted) {
+            var area = document.getElementById('encourage-area');
+            var messages = [];
+            var totalActivities = yr.length;
+
+            if (totalActivities === 0) {
+                messages.push('今年はまだ活動記録がありません。最初の一歩を踏み出しましょう！');
+            } else if (totalActivities < 10) {
+                messages.push('今年 <strong>' + totalActivities + '回</strong> の活動を記録しました。素晴らしいスタートです！');
+            } else if (totalActivities < 30) {
+                messages.push('今年 <strong>' + totalActivities + '回</strong> の活動！街がどんどん綺麗になっています！');
+            } else {
+                messages.push('今年 <strong>' + totalActivities + '回</strong> の活動！CleanVibesの力で街が輝いています！');
+            }
+
+            if (sorted.length > 0) {
+                var topName = sorted[0][0];
+                var topCount = sorted[0][1];
+                messages.push('<strong>' + topName + '</strong>さんが <strong>' + topCount + '回</strong> でトップを走っています！');
+            }
+
+            // Streak check
+            var now = new Date();
+            var recentWeeks = 0;
+            for (var w = 0; w < 8; w++) {
+                var weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay() - (w * 7));
+                var weekEnd = new Date(weekStart);
+                weekEnd.setDate(weekEnd.getDate() + 6);
+                var hasActivity = yr.some(function(r) {
+                    var d = new Date(r.date);
+                    return d >= weekStart && d <= weekEnd;
+                });
+                if (hasActivity) recentWeeks++;
+                else break;
+            }
+            if (recentWeeks >= 3) {
+                messages.push('<strong>' + recentWeeks + '週連続</strong>で活動中！素晴らしい継続力です！');
+            }
+
+            area.innerHTML = '<div class="encourage-section">' +
+                '<div class="encourage-title">チームの声</div>' +
+                '<div class="encourage-msg">' + messages.join('<br>') + '</div></div>';
         }
 
         function updateHeaderCount() {
-            const cnt = state.records.filter(function(r) { return new Date(r.date).getFullYear() === new Date().getFullYear(); }).length;
+            var cnt = state.records.filter(function(r) { return new Date(r.date).getFullYear() === new Date().getFullYear(); }).length;
             document.getElementById('header-count').textContent = cnt;
         }
 
         function renderAll() { renderRecords(); renderMembers(); renderStats(); updateHeaderCount(); }
 
         function showToast(msg) {
-            const t = document.getElementById('toast');
+            var t = document.getElementById('toast');
             t.textContent = msg;
             t.classList.add('show');
             setTimeout(function() { t.classList.remove('show'); }, 2500);
         }
 
-        // === 自動同期 ===
+        // ==========================================
+        // AUTO SYNC
+        // ==========================================
         setInterval(function() {
-            const callbackName = 'gasRefresh_' + Date.now();
+            var callbackName = 'gasRefresh_' + Date.now();
             window[callbackName] = function(remote) {
                 try {
                     if (remote && Array.isArray(remote.records) && JSON.stringify(remote) !== JSON.stringify(state)) {
                         state = remote;
                         renderAll();
-                        showToast('🔄 データを更新しました');
+                        showToast('データを更新しました');
                     }
                 } catch(e) {}
                 if (script.parentNode) document.head.removeChild(script);
