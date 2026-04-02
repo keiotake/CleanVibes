@@ -1128,7 +1128,8 @@
         function renderStats() {
             var year = new Date().getFullYear();
             var yr = state.records.filter(function(r) { return new Date(r.date).getFullYear() === year; });
-            document.getElementById('st-total').textContent = state.records.length;
+            var PAST_ACTIVITY_COUNT = 392; // アプリ導入前の活動回数
+            document.getElementById('st-total').textContent = state.records.length + PAST_ACTIVITY_COUNT;
             document.getElementById('st-year').textContent = yr.length;
             document.getElementById('st-members').textContent = state.members.length;
 
