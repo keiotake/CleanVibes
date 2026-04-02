@@ -336,6 +336,61 @@
         #edit-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 300; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
         .modal-content { background: var(--white); border-radius: 20px; padding: 24px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: var(--shadow-lg); }
 
+        /* === SUPPORT & ACCOUNTING === */
+        .support-card {
+            background: var(--white); border: 1.5px solid var(--gray-200); border-radius: 14px;
+            padding: 14px 16px; margin-bottom: 10px; transition: all 0.3s;
+            background-image: var(--gradient-card); display: flex; align-items: center; gap: 12px;
+        }
+        .support-card:hover { border-color: var(--ocean); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+        .support-icon { font-size: 1.8rem; }
+        .support-info { flex: 1; }
+        .support-name { font-weight: 900; font-size: 0.95rem; color: var(--deep); }
+        .support-detail { font-size: 0.8rem; color: var(--gray-600); margin-top: 2px; }
+        .support-date { font-family: 'Space Mono', monospace; font-size: 0.7rem; color: var(--gray-400); }
+        .support-amount { font-family: 'Space Mono', monospace; font-weight: 700; font-size: 1rem; white-space: nowrap; }
+        .support-amount.income { color: var(--green); }
+        .support-amount.item { background: var(--gradient-main); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .support-delete { background: none; border: none; color: var(--gray-400); cursor: pointer; font-size: 0.8rem; padding: 4px; transition: color 0.2s; }
+        .support-delete:hover { color: var(--danger); }
+        .support-summary {
+            background: linear-gradient(135deg, #fef3c7, #fffbeb); border: 1.5px solid #fde68a;
+            border-radius: 16px; padding: 18px; margin-bottom: 16px; text-align: center;
+        }
+        .support-summary-title { font-weight: 900; font-size: 0.9rem; color: #92400e; margin-bottom: 8px; }
+        .support-summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .support-summary-item { padding: 10px; background: rgba(255,255,255,0.7); border-radius: 10px; }
+        .support-summary-num { font-family: 'Space Mono', monospace; font-size: 1.3rem; font-weight: 700; color: #b45309; }
+        .support-summary-label { font-size: 0.7rem; color: #92400e; }
+
+        .accounting-table { width: 100%; border-collapse: separate; border-spacing: 0; border-radius: 12px; overflow: hidden; border: 1.5px solid var(--gray-200); margin-bottom: 16px; }
+        .accounting-table th { background: var(--gradient-main); color: var(--white); padding: 10px 12px; font-size: 0.8rem; font-weight: 700; text-align: left; }
+        .accounting-table td { padding: 10px 12px; font-size: 0.85rem; border-top: 1px solid var(--gray-200); background: var(--white); }
+        .accounting-table tr:hover td { background: var(--sky); }
+        .accounting-table .amount-in { color: var(--green); font-weight: 700; }
+        .accounting-table .amount-out { color: var(--danger); font-weight: 700; }
+        .accounting-balance {
+            background: linear-gradient(135deg, #ecfdf5, #d1fae5); border: 1.5px solid rgba(16,185,129,0.3);
+            border-radius: 16px; padding: 18px; margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between;
+        }
+        .balance-label { font-weight: 900; font-size: 1rem; color: #065f46; }
+        .balance-amount { font-family: 'Space Mono', monospace; font-size: 1.5rem; font-weight: 700; color: var(--green); }
+        .accounting-filter { display: flex; gap: 6px; margin-bottom: 12px; flex-wrap: wrap; }
+        .accounting-filter button {
+            padding: 6px 14px; border: 1.5px solid var(--gray-200); border-radius: 8px;
+            background: var(--white); font-family: 'Zen Kaku Gothic New', sans-serif;
+            font-size: 0.8rem; font-weight: 700; color: var(--gray-600); cursor: pointer; transition: all 0.2s;
+        }
+        .accounting-filter button.active { border-color: var(--ocean); background: var(--sky); color: var(--deep); }
+        .accounting-filter button:hover { border-color: var(--ocean); }
+        @media (max-width: 640px) {
+            .support-summary-grid { grid-template-columns: 1fr 1fr; }
+            .accounting-table { font-size: 0.75rem; }
+            .accounting-table th, .accounting-table td { padding: 8px 8px; }
+            .bottom-nav button { font-size: 0.55rem; }
+            .bottom-nav button .nav-icon { font-size: 1.2rem; }
+        }
+
         /* === FOOTER === */
         .app-footer { max-width: 960px; margin: 0 auto; padding: 20px; text-align: center; }
         .footer-logo { height: 60px; opacity: 0.6; margin-bottom: 8px; }
@@ -365,6 +420,8 @@
         <button class="tab active" onclick="switchTab('records')">活動記録</button>
         <button class="tab" onclick="switchTab('members')">メンバー</button>
         <button class="tab" onclick="switchTab('stats')">集計</button>
+        <button class="tab" onclick="switchTab('support')">支援</button>
+        <button class="tab" onclick="switchTab('accounting')">経理</button>
     </div>
 
     <div class="main">
@@ -437,12 +494,76 @@
             <div id="impact-area"></div>
             <div id="encourage-area"></div>
         </div>
+        <!-- Support Panel -->
+        <div id="panel-support" class="panel">
+            <div id="support-summary-area"></div>
+            <div class="form-section">
+                <div class="form-title">ご支援を記録</div>
+                <div class="form-grid">
+                    <div class="form-group"><label>支援者名 *</label><input id="sp-name" type="text" placeholder="例: 〇〇様"></div>
+                    <div class="form-group"><label>日付 *</label><input id="sp-date" type="date"></div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>種別 *</label>
+                        <select id="sp-type" style="padding:11px 14px;border:1.5px solid var(--gray-200);border-radius:10px;font-family:'Zen Kaku Gothic New',sans-serif;font-size:1rem;">
+                            <option value="money">金銭</option>
+                            <option value="item">物品</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>金額 / 品名 *</label><input id="sp-value" type="text" placeholder="例: 10000 または 清掃用具一式"></div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group full"><label>備考</label><input id="sp-memo" type="text" placeholder="メッセージや詳細など"></div>
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-primary" onclick="addSupport()">記録する</button>
+                </div>
+            </div>
+            <div id="support-list"></div>
+        </div>
+
+        <!-- Accounting Panel -->
+        <div id="panel-accounting" class="panel">
+            <div id="accounting-balance-area"></div>
+            <div class="form-section">
+                <div class="form-title">収支を記録</div>
+                <div class="form-grid">
+                    <div class="form-group"><label>日付 *</label><input id="ac-date" type="date"></div>
+                    <div class="form-group">
+                        <label>種別 *</label>
+                        <select id="ac-type" style="padding:11px 14px;border:1.5px solid var(--gray-200);border-radius:10px;font-family:'Zen Kaku Gothic New',sans-serif;font-size:1rem;">
+                            <option value="income">収入</option>
+                            <option value="expense">支出</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group"><label>金額（円） *</label><input id="ac-amount" type="number" placeholder="例: 5000" min="0"></div>
+                    <div class="form-group"><label>科目 *</label><input id="ac-category" type="text" placeholder="例: 支援金 / 用具購入費"></div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group full"><label>摘要</label><input id="ac-memo" type="text" placeholder="詳細や備考"></div>
+                </div>
+                <div class="form-actions">
+                    <button class="btn btn-primary" onclick="addAccounting()">記録する</button>
+                </div>
+            </div>
+            <div class="accounting-filter">
+                <button class="active" onclick="setAccFilter('all')">すべて</button>
+                <button onclick="setAccFilter('income')">収入のみ</button>
+                <button onclick="setAccFilter('expense')">支出のみ</button>
+            </div>
+            <div id="accounting-table-area"></div>
+        </div>
     </div>
 
     <div class="bottom-nav">
-        <button class="active" onclick="switchTab('records')" style="border-right: 1px solid var(--gray-200);"><span class="nav-icon">📝</span>活動記録</button>
-        <button onclick="switchTab('members')" style="border-right: 1px solid var(--gray-200);"><span class="nav-icon">👥</span>メンバー</button>
-        <button onclick="switchTab('stats')"><span class="nav-icon">📊</span>集計</button>
+        <button class="active" onclick="switchTab('records')" style="border-right: 1px solid var(--gray-200);"><span class="nav-icon">📝</span>記録</button>
+        <button onclick="switchTab('members')" style="border-right: 1px solid var(--gray-200);"><span class="nav-icon">👥</span>仲間</button>
+        <button onclick="switchTab('stats')" style="border-right: 1px solid var(--gray-200);"><span class="nav-icon">📊</span>集計</button>
+        <button onclick="switchTab('support')" style="border-right: 1px solid var(--gray-200);"><span class="nav-icon">🤝</span>支援</button>
+        <button onclick="switchTab('accounting')"><span class="nav-icon">💰</span>経理</button>
     </div>
 
     <!-- Edit Modal -->
@@ -491,7 +612,7 @@
     <script>
         const GAS_URL = 'https://script.google.com/macros/s/AKfycbyCHg6qLzpttcBDAAiAIFxBCreZ4ZVk0WdEQ-YVGNWMKYooWY4Wgsti2gGWSdZTRvVK0Q/exec';
 
-        let state = { records: [], members: [] };
+        let state = { records: [], members: [], supports: [], accounting: [] };
         let editingId = null;
         let sortOrder = 'desc';
         const ADMIN_PASSWORD = 'Clean Vibes';
@@ -565,7 +686,11 @@
                 var callbackName = 'gasCallback_' + Date.now();
                 window[callbackName] = function(data) {
                     try {
-                        if (data && Array.isArray(data.records) && Array.isArray(data.members)) { state = data; }
+                        if (data && Array.isArray(data.records) && Array.isArray(data.members)) {
+                            if (!data.supports) data.supports = [];
+                            if (!data.accounting) data.accounting = [];
+                            state = data;
+                        }
                         setSyncStatus('ok');
                     } catch(e) { setSyncStatus('error'); }
                     if (script.parentNode) document.head.removeChild(script);
@@ -723,16 +848,21 @@
         // ==========================================
         // TABS
         // ==========================================
+        var TAB_NAMES = ['records', 'members', 'stats', 'support', 'accounting'];
+        var accFilter = 'all';
+
         function switchTab(name) {
-            ['records', 'members', 'stats'].forEach(function(n, i) {
+            TAB_NAMES.forEach(function(n, i) {
                 document.querySelectorAll('.tab')[i].classList.toggle('active', n === name);
                 document.getElementById('panel-' + n).classList.toggle('active', n === name);
             });
             document.querySelectorAll('.bottom-nav button').forEach(function(btn, i) {
-                btn.classList.toggle('active', (i === 0 && name === 'records') || (i === 1 && name === 'members') || (i === 2 && name === 'stats'));
+                btn.classList.toggle('active', TAB_NAMES[i] === name);
             });
             if (name === 'stats') renderStats();
             if (name === 'members') renderMembers();
+            if (name === 'support') renderSupport();
+            if (name === 'accounting') renderAccounting();
         }
 
         // ==========================================
@@ -1205,7 +1335,168 @@
             document.getElementById('header-count').textContent = cnt;
         }
 
-        function renderAll() { renderRecords(); renderMembers(); renderStats(); updateHeaderCount(); }
+        function renderAll() { renderRecords(); renderMembers(); renderStats(); renderSupport(); renderAccounting(); updateHeaderCount(); }
+
+        // ==========================================
+        // SUPPORT (ご支援リスト)
+        // ==========================================
+        async function addSupport() {
+            var name = document.getElementById('sp-name').value.trim();
+            var date = document.getElementById('sp-date').value;
+            var type = document.getElementById('sp-type').value;
+            var value = document.getElementById('sp-value').value.trim();
+            var memo = document.getElementById('sp-memo').value.trim();
+            if (!name || !date || !value) { showToast('支援者名・日付・金額/品名は必須です'); return; }
+            if (!state.supports) state.supports = [];
+            state.supports.push({ id: Date.now(), name: name, date: date, type: type, value: value, memo: memo });
+            await saveToCloud();
+            renderSupport();
+            ['sp-name', 'sp-date', 'sp-value', 'sp-memo'].forEach(function(id) { document.getElementById(id).value = ''; });
+            showToast('ご支援を記録しました');
+        }
+
+        async function deleteSupport(id) {
+            if (!checkAdmin()) return;
+            if (!confirm('この支援記録を削除しますか？')) return;
+            state.supports = state.supports.filter(function(s) { return s.id !== id; });
+            await saveToCloud();
+            renderSupport();
+            showToast('支援記録を削除しました');
+        }
+
+        function renderSupport() {
+            var supports = state.supports || [];
+            var summaryArea = document.getElementById('support-summary-area');
+            var listArea = document.getElementById('support-list');
+
+            // Summary
+            var totalMoney = 0, totalItems = 0, uniqueDonors = {};
+            supports.forEach(function(s) {
+                uniqueDonors[s.name] = true;
+                if (s.type === 'money') { var amt = parseInt(s.value); if (!isNaN(amt)) totalMoney += amt; }
+                else { totalItems++; }
+            });
+            summaryArea.innerHTML = supports.length > 0 ? '<div class="support-summary">' +
+                '<div class="support-summary-title">ご支援の総計</div>' +
+                '<div class="support-summary-grid">' +
+                '<div class="support-summary-item"><div class="support-summary-num">' + Object.keys(uniqueDonors).length + '</div><div class="support-summary-label">支援者数</div></div>' +
+                '<div class="support-summary-item"><div class="support-summary-num">' + supports.length + '</div><div class="support-summary-label">支援件数</div></div>' +
+                '<div class="support-summary-item"><div class="support-summary-num">' + totalMoney.toLocaleString() + '</div><div class="support-summary-label">金銭支援（円）</div></div>' +
+                '<div class="support-summary-item"><div class="support-summary-num">' + totalItems + '</div><div class="support-summary-label">物品支援</div></div>' +
+                '</div></div>' : '';
+
+            // List
+            if (supports.length === 0) {
+                listArea.innerHTML = '<div class="empty"><div class="empty-icon">🤝</div><div class="empty-text">まだ支援記録がありません</div></div>';
+                return;
+            }
+            var sorted = [...supports].sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
+            listArea.innerHTML = sorted.map(function(s) {
+                var d = new Date(s.date + 'T00:00:00');
+                var ds = d.getFullYear() + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getDate()).padStart(2, '0');
+                var icon = s.type === 'money' ? '💰' : '🎁';
+                var amountClass = s.type === 'money' ? 'income' : 'item';
+                var amountText = s.type === 'money' ? '¥' + parseInt(s.value).toLocaleString() : s.value;
+                var deleteBtn = isAdmin ? '<button class="support-delete" onclick="deleteSupport(' + s.id + ')">✕</button>' : '';
+                return '<div class="support-card">' +
+                    '<div class="support-icon">' + icon + '</div>' +
+                    '<div class="support-info"><div class="support-name">' + s.name + '</div>' +
+                    (s.memo ? '<div class="support-detail">' + s.memo + '</div>' : '') +
+                    '<div class="support-date">' + ds + '</div></div>' +
+                    '<div class="support-amount ' + amountClass + '">' + amountText + '</div>' +
+                    deleteBtn + '</div>';
+            }).join('');
+        }
+
+        // ==========================================
+        // ACCOUNTING (経理情報)
+        // ==========================================
+        async function addAccounting() {
+            var date = document.getElementById('ac-date').value;
+            var type = document.getElementById('ac-type').value;
+            var amount = parseInt(document.getElementById('ac-amount').value);
+            var category = document.getElementById('ac-category').value.trim();
+            var memo = document.getElementById('ac-memo').value.trim();
+            if (!date || isNaN(amount) || amount <= 0 || !category) { showToast('日付・金額・科目は必須です'); return; }
+            if (!state.accounting) state.accounting = [];
+            state.accounting.push({ id: Date.now(), date: date, type: type, amount: amount, category: category, memo: memo });
+            await saveToCloud();
+            renderAccounting();
+            ['ac-date', 'ac-amount', 'ac-category', 'ac-memo'].forEach(function(id) { document.getElementById(id).value = ''; });
+            showToast('収支を記録しました');
+        }
+
+        async function deleteAccounting(id) {
+            if (!checkAdmin()) return;
+            if (!confirm('この収支記録を削除しますか？')) return;
+            state.accounting = state.accounting.filter(function(a) { return a.id !== id; });
+            await saveToCloud();
+            renderAccounting();
+            showToast('収支記録を削除しました');
+        }
+
+        function setAccFilter(filter) {
+            accFilter = filter;
+            document.querySelectorAll('.accounting-filter button').forEach(function(btn) {
+                btn.classList.toggle('active', btn.textContent === (filter === 'all' ? 'すべて' : filter === 'income' ? '収入のみ' : '支出のみ'));
+            });
+            renderAccounting();
+        }
+
+        function renderAccounting() {
+            var accounting = state.accounting || [];
+            var balanceArea = document.getElementById('accounting-balance-area');
+            var tableArea = document.getElementById('accounting-table-area');
+
+            // Balance
+            var totalIncome = 0, totalExpense = 0;
+            accounting.forEach(function(a) {
+                if (a.type === 'income') totalIncome += a.amount;
+                else totalExpense += a.amount;
+            });
+            var balance = totalIncome - totalExpense;
+            balanceArea.innerHTML = '<div class="accounting-balance">' +
+                '<div><div class="balance-label">現在の残高</div>' +
+                '<div style="font-size:0.75rem;color:var(--gray-600);margin-top:2px;">収入 ¥' + totalIncome.toLocaleString() + ' ／ 支出 ¥' + totalExpense.toLocaleString() + '</div></div>' +
+                '<div class="balance-amount" style="color:' + (balance >= 0 ? 'var(--green)' : 'var(--danger)') + '">¥' + balance.toLocaleString() + '</div></div>';
+
+            // Filter
+            var filtered = accounting;
+            if (accFilter === 'income') filtered = accounting.filter(function(a) { return a.type === 'income'; });
+            if (accFilter === 'expense') filtered = accounting.filter(function(a) { return a.type === 'expense'; });
+
+            if (filtered.length === 0) {
+                tableArea.innerHTML = '<div class="empty"><div class="empty-icon">💰</div><div class="empty-text">' +
+                    (accounting.length === 0 ? 'まだ収支記録がありません' : '該当する記録がありません') + '</div></div>';
+                return;
+            }
+
+            var sorted = [...filtered].sort(function(a, b) { return new Date(b.date) - new Date(a.date); });
+            var runningBalance = totalIncome - totalExpense;
+            // Calculate running balance from oldest
+            var allSorted = [...accounting].sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
+            var balanceMap = {};
+            var rb = 0;
+            allSorted.forEach(function(a) {
+                rb += (a.type === 'income' ? a.amount : -a.amount);
+                balanceMap[a.id] = rb;
+            });
+
+            tableArea.innerHTML = '<table class="accounting-table"><thead><tr>' +
+                '<th>日付</th><th>科目</th><th>摘要</th><th>収入</th><th>支出</th><th>残高</th>' +
+                (isAdmin ? '<th></th>' : '') +
+                '</tr></thead><tbody>' +
+                sorted.map(function(a) {
+                    var d = new Date(a.date + 'T00:00:00');
+                    var ds = String(d.getMonth() + 1) + '/' + String(d.getDate());
+                    var deleteBtn = isAdmin ? '<td><button class="support-delete" onclick="deleteAccounting(' + a.id + ')">✕</button></td>' : '';
+                    return '<tr><td>' + ds + '</td><td>' + a.category + '</td><td>' + (a.memo || '-') + '</td>' +
+                        '<td class="amount-in">' + (a.type === 'income' ? '¥' + a.amount.toLocaleString() : '') + '</td>' +
+                        '<td class="amount-out">' + (a.type === 'expense' ? '¥' + a.amount.toLocaleString() : '') + '</td>' +
+                        '<td>¥' + (balanceMap[a.id] || 0).toLocaleString() + '</td>' +
+                        deleteBtn + '</tr>';
+                }).join('') + '</tbody></table>';
+        }
 
         function showToast(msg) {
             var t = document.getElementById('toast');
@@ -1222,6 +1513,8 @@
             window[callbackName] = function(remote) {
                 try {
                     if (remote && Array.isArray(remote.records) && JSON.stringify(remote) !== JSON.stringify(state)) {
+                        if (!remote.supports) remote.supports = [];
+                        if (!remote.accounting) remote.accounting = [];
                         state = remote;
                         renderAll();
                         showToast('データを更新しました');
