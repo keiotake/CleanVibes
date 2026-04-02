@@ -280,14 +280,7 @@
         .impact-num { font-family: 'Space Mono', monospace; font-size: 1.4rem; font-weight: 700; color: var(--green); }
         .impact-label { font-size: 0.7rem; color: #047857; margin-top: 2px; }
 
-        /* === MONTHLY GOAL === */
-        .goal-section { margin-top: 20px; padding: 16px; background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 1.5px solid rgba(14,165,233,0.3); border-radius: 16px; }
-        .goal-title { font-weight: 900; font-size: 0.95rem; color: var(--deep); margin-bottom: 10px; }
-        .goal-progress-bar { height: 12px; background: var(--gray-200); border-radius: 6px; overflow: hidden; margin: 8px 0; }
-        .goal-progress-fill { height: 100%; background: var(--gradient-main); border-radius: 6px; transition: width 0.8s ease; position: relative; }
-        .goal-progress-fill::after { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent); animation: shimmer 2s infinite; }
         @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
-        .goal-text { font-size: 0.85rem; color: var(--deep); display: flex; justify-content: space-between; }
 
         /* === MOBILE === */
         @media (max-width: 640px) {
@@ -482,7 +475,6 @@
 
         <!-- Stats Panel -->
         <div id="panel-stats" class="panel">
-            <div id="goal-area"></div>
             <div class="stats-grid">
                 <div class="stat-card"><div class="stat-num" id="st-total">0</div><div class="stat-label">総活動回数</div></div>
                 <div class="stat-card"><div class="stat-num" id="st-year">0</div><div class="stat-label">今年の活動回数</div></div>
@@ -1167,9 +1159,6 @@
             document.getElementById('st-year').textContent = yr.length;
             document.getElementById('st-members').textContent = state.members.length;
 
-            // Monthly Goal
-            renderGoal(yr);
-
             // Ranking
             var counts = {};
             var excludeFromRanking = ['大竹'];
@@ -1203,22 +1192,6 @@
 
             // Encouragement
             renderEncouragement(yr, sorted);
-        }
-
-        function renderGoal(yr) {
-            var area = document.getElementById('goal-area');
-            var month = new Date().getMonth();
-            var monthNames = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
-            var goal = 4; // Monthly goal: 4 activities
-            var thisMonth = yr.filter(function(r) {
-                return new Date(r.date).getMonth() === month;
-            }).length;
-            var pct = Math.min(100, Math.round((thisMonth / goal) * 100));
-            area.innerHTML = '<div class="goal-section">' +
-                '<div class="goal-title">' + monthNames[month] + 'の目標</div>' +
-                '<div class="goal-progress-bar"><div class="goal-progress-fill" style="width:' + pct + '%"></div></div>' +
-                '<div class="goal-text"><span>' + thisMonth + ' / ' + goal + ' 回達成</span><span>' + (thisMonth >= goal ? '目標達成！🎉' : 'あと ' + (goal - thisMonth) + ' 回！') + '</span></div>' +
-                '</div>';
         }
 
         function renderHeatmap(yr) {
