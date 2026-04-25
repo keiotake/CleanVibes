@@ -256,7 +256,7 @@
         .member-add-row input { flex: 1; }
 
         /* === ROADMAP / COUNTERS (Top of Records) === */
-        .top-counters { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+        .top-counters { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
         .counter-card {
             background: var(--white); border: 2px solid transparent; border-radius: 16px;
             padding: 14px 10px; text-align: center; position: relative; overflow: hidden;
@@ -287,12 +287,15 @@
         .roadmap-progress { height: 100%; background: var(--gradient-main); border-radius: 999px; transition: width 1s ease; position: relative; }
         .roadmap-progress::after { content: ''; position: absolute; top: 0; right: -2px; bottom: 0; width: 4px; border-radius: 999px; background: rgba(255,255,255,0.8); box-shadow: 0 0 8px rgba(14,165,233,0.6); }
         .roadmap-marker {
-            position: absolute; top: 0; transform: translate(-50%, 0);
-            font-size: 1.3rem; line-height: 1;
+            position: absolute; top: 0;
+            font-size: 1.5rem; line-height: 1;
             filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
             animation: bob 2s ease-in-out infinite;
         }
-        @keyframes bob { 0%,100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, -3px); } }
+        @keyframes bob {
+            0%,100% { transform: translate(-50%, 0) scaleX(-1); }
+            50%     { transform: translate(-50%, -4px) scaleX(-1); }
+        }
         .roadmap-goal { position: absolute; right: -2px; top: 0; font-size: 1.1rem; line-height: 1; }
         .roadmap-months { display: grid; grid-template-columns: repeat(12, 1fr); margin-top: 8px; font-size: 0.65rem; color: var(--gray-400); font-weight: 700; text-align: center; }
         .roadmap-month.current { color: var(--ocean); font-size: 0.75rem; }
@@ -998,8 +1001,7 @@
             if (!area) return;
             var year = new Date().getFullYear();
             var yearCount = state.records.filter(function(r) { return new Date(r.date).getFullYear() === year; }).length;
-            var totalCount      = state.records.length + TOTAL_HISTORY_OFFSET;
-            var cleanVibesCount = state.records.length + CLEANVIBES_HISTORY_OFFSET;
+            var totalCount = state.records.length + TOTAL_HISTORY_OFFSET;
             area.innerHTML =
                 '<div class="top-counters">' +
                 '<div class="counter-card highlight">' +
@@ -1009,18 +1011,32 @@
                   '<div class="counter-unit">回目</div>' +
                 '</div>' +
                 '<div class="counter-card">' +
-                  '<div class="counter-icon">🌊</div>' +
-                  '<div class="counter-label">CleanVibes</div>' +
-                  '<div class="counter-num">' + cleanVibesCount + '</div>' +
-                  '<div class="counter-unit">回目</div>' +
-                '</div>' +
-                '<div class="counter-card">' +
                   '<div class="counter-icon">📅</div>' +
                   '<div class="counter-label">' + year + '年</div>' +
                   '<div class="counter-num">' + yearCount + '</div>' +
                   '<div class="counter-unit">回目</div>' +
                 '</div>' +
                 '</div>';
+        }
+
+        // 通算回数に応じて歩く人が成長する
+        const WALKER_LEVELS = [
+            { min: 0,   emoji: '🚶' }, // ふつうの歩き
+            { min: 50,  emoji: '🚶‍♂️' }, // しっかり歩く
+            { min: 100, emoji: '🏃' }, // ジョギング
+            { min: 200, emoji: '🏃‍♂️' }, // ランナー
+            { min: 300, emoji: '🚴' }, // 自転車
+            { min: 400, emoji: '🚴‍♂️' }, // ロードバイク
+            { min: 500, emoji: '🏆' }, // 達成
+            { min: 700, emoji: '👑' }, // 王者
+            { min: 1000,emoji: '🌟' }, // レジェンド
+        ];
+        function getWalker(count) {
+            var w = WALKER_LEVELS[0];
+            for (var i = WALKER_LEVELS.length - 1; i >= 0; i--) {
+                if (count >= WALKER_LEVELS[i].min) { w = WALKER_LEVELS[i]; break; }
+            }
+            return w.emoji;
         }
 
         function renderRoadmap() {
@@ -1052,7 +1068,7 @@
                   '<div class="roadmap-track-wrap">' +
                     '<div class="roadmap-track">' +
                       '<div class="roadmap-progress" style="width:' + pct + '%"></div>' +
-                      '<div class="roadmap-marker" style="left:' + pct + '%">🚶</div>' +
+                      '<div class="roadmap-marker" style="left:' + pct + '%">' + getWalker(state.records.length + TOTAL_HISTORY_OFFSET) + '</div>' +
                       '<div class="roadmap-goal">🎉</div>' +
                     '</div>' +
                     '<div class="roadmap-months">' + monthLabels + '</div>' +
