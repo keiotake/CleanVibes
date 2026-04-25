@@ -469,8 +469,8 @@
 
     <div class="tabs">
         <button class="tab active" onclick="switchTab('records')">活動記録</button>
-        <button class="tab" onclick="switchTab('members')">メンバー</button>
         <button class="tab" onclick="switchTab('stats')">集計</button>
+        <button class="tab" onclick="switchTab('members')">メンバー</button>
         <button class="tab" onclick="switchTab('support')">支援</button>
         <button class="tab" onclick="switchTab('accounting')">経理</button>
     </div>
@@ -612,8 +612,8 @@
 
     <div class="bottom-nav">
         <button class="active" onclick="switchTab('records')" style="border-right: 1px solid var(--gray-200);"><span class="nav-icon">📝</span>記録</button>
-        <button onclick="switchTab('members')" style="border-right: 1px solid var(--gray-200);"><span class="nav-icon">👥</span>仲間</button>
         <button onclick="switchTab('stats')" style="border-right: 1px solid var(--gray-200);"><span class="nav-icon">📊</span>集計</button>
+        <button onclick="switchTab('members')" style="border-right: 1px solid var(--gray-200);"><span class="nav-icon">👥</span>仲間</button>
         <button onclick="switchTab('support')" style="border-right: 1px solid var(--gray-200);"><span class="nav-icon">🤝</span>支援</button>
         <button onclick="switchTab('accounting')"><span class="nav-icon">💰</span>経理</button>
     </div>
@@ -890,7 +890,7 @@
         // ==========================================
         // TABS
         // ==========================================
-        var TAB_NAMES = ['records', 'members', 'stats', 'support', 'accounting'];
+        var TAB_NAMES = ['records', 'stats', 'members', 'support', 'accounting'];
         var accFilter = 'all';
 
         function switchTab(name) {
@@ -1248,12 +1248,7 @@
             var topMember = state.members.reduce(function(top, m) { return (counts[m] || 0) > (counts[top] || 0) ? m : top; }, state.members[0]);
             var topLevel = getCharacterLevel(counts[topMember] || 0);
 
-            // Character Showcase
-            showcase.innerHTML = '<div class="character-showcase"><div class="showcase-content">' +
-                '<span class="showcase-char">' + topLevel.emoji + '</span>' +
-                '<div class="showcase-title">チームの総活動: ' + totalCount + ' 回</div>' +
-                '<div class="showcase-subtitle">みんなで綺麗なまちを作ろう！</div>' +
-                '</div></div>';
+            showcase.innerHTML = '';
 
             // Member Cards with Characters
             var sorted = [...state.members].sort(function(a, b) { return (counts[b] || 0) - (counts[a] || 0); });
