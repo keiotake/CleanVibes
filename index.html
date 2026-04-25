@@ -255,6 +255,51 @@
         .member-add-row { display: flex; gap: 8px; margin-bottom: 14px; }
         .member-add-row input { flex: 1; }
 
+        /* === ROADMAP / COUNTERS (Top of Records) === */
+        .top-counters { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+        .counter-card {
+            background: var(--white); border: 2px solid transparent; border-radius: 16px;
+            padding: 14px 10px; text-align: center; position: relative; overflow: hidden;
+            background-image: linear-gradient(var(--white), var(--white)), var(--gradient-main);
+            background-origin: border-box; background-clip: padding-box, border-box;
+            transition: all 0.3s; box-shadow: var(--shadow-sm);
+        }
+        .counter-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+        .counter-icon { font-size: 1.3rem; line-height: 1; }
+        .counter-label { font-size: 0.7rem; color: var(--gray-600); font-weight: 700; margin-top: 3px; letter-spacing: 0.02em; }
+        .counter-num { font-family: 'Space Mono', monospace; font-size: 1.8rem; font-weight: 700; background: var(--gradient-main); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1.1; margin-top: 2px; }
+        .counter-unit { font-size: 0.7rem; color: var(--gray-400); }
+        .counter-card.highlight { background-image: var(--gradient-main); }
+        .counter-card.highlight .counter-num { background: var(--white); -webkit-background-clip: text; -webkit-text-fill-color: white; color: var(--white); }
+        .counter-card.highlight .counter-label,
+        .counter-card.highlight .counter-unit { color: rgba(255,255,255,0.9); }
+
+        .roadmap-card {
+            background: linear-gradient(135deg, #e0f2fe, #ecfdf5);
+            border: 1.5px solid rgba(14,165,233,0.25);
+            border-radius: 16px; padding: 16px; margin-bottom: 16px; position: relative; overflow: hidden;
+        }
+        .roadmap-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+        .roadmap-title { font-weight: 900; font-size: 0.95rem; color: var(--deep); display: flex; align-items: center; gap: 6px; }
+        .roadmap-status { font-size: 0.75rem; color: var(--teal); font-weight: 700; background: rgba(255,255,255,0.7); padding: 4px 10px; border-radius: 20px; }
+        .roadmap-track-wrap { position: relative; padding: 18px 0 6px; }
+        .roadmap-track { height: 8px; background: rgba(255,255,255,0.7); border-radius: 999px; position: relative; box-shadow: inset 0 1px 2px rgba(0,0,0,0.06); }
+        .roadmap-progress { height: 100%; background: var(--gradient-main); border-radius: 999px; transition: width 1s ease; position: relative; }
+        .roadmap-progress::after { content: ''; position: absolute; top: 0; right: -2px; bottom: 0; width: 4px; border-radius: 999px; background: rgba(255,255,255,0.8); box-shadow: 0 0 8px rgba(14,165,233,0.6); }
+        .roadmap-marker {
+            position: absolute; top: 0; transform: translate(-50%, 0);
+            font-size: 1.3rem; line-height: 1;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.15));
+            animation: bob 2s ease-in-out infinite;
+        }
+        @keyframes bob { 0%,100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, -3px); } }
+        .roadmap-goal { position: absolute; right: -2px; top: 0; font-size: 1.1rem; line-height: 1; }
+        .roadmap-months { display: grid; grid-template-columns: repeat(12, 1fr); margin-top: 8px; font-size: 0.65rem; color: var(--gray-400); font-weight: 700; text-align: center; }
+        .roadmap-month.current { color: var(--ocean); font-size: 0.75rem; }
+        .roadmap-month.past { color: var(--teal); }
+        .roadmap-msg { font-size: 0.8rem; color: var(--gray-600); margin-top: 8px; line-height: 1.6; text-align: center; }
+        .roadmap-msg strong { color: var(--deep); font-weight: 900; }
+
         /* === ENVIRONMENTAL IMPACT === */
         .impact-section { margin-top: 20px; padding: 16px; background: linear-gradient(135deg, #ecfdf5, #d1fae5); border: 1.5px solid rgba(16,185,129,0.3); border-radius: 16px; }
         .impact-title { font-weight: 900; font-size: 0.95rem; color: #065f46; margin-bottom: 12px; }
@@ -319,6 +364,18 @@
             .rank-item { padding: 12px; gap: 8px; }
             .rank-name { font-size: 0.9rem; word-break: break-word; }
             .character-level { font-size: 0.55rem; }
+            .top-counters { gap: 6px; }
+            .counter-card { padding: 10px 4px; }
+            .counter-num { font-size: 1.4rem; }
+            .counter-label { font-size: 0.62rem; }
+            .counter-unit { font-size: 0.62rem; }
+            .counter-icon { font-size: 1.1rem; }
+            .roadmap-card { padding: 12px; }
+            .roadmap-title { font-size: 0.85rem; }
+            .roadmap-status { font-size: 0.65rem; padding: 3px 8px; }
+            .roadmap-months { font-size: 0.55rem; }
+            .roadmap-month.current { font-size: 0.65rem; }
+            .roadmap-msg { font-size: 0.72rem; }
         }
 
         /* === MODAL === */
@@ -418,6 +475,8 @@
     <div class="main">
         <!-- Records Panel -->
         <div id="panel-records" class="panel active">
+            <div id="top-counters-area"></div>
+            <div id="roadmap-area"></div>
             <div style="margin-bottom: 14px; display: flex; gap: 8px;">
                 <button id="add-toggle" onclick="toggleAddForm()" class="add-toggle-btn">+ 記録を追加</button>
                 <button id="sort-btn" onclick="toggleSort()" style="background: var(--gradient-main); color: var(--white); border: none; border-radius: 10px; padding: 12px 22px; font-family: 'Zen Kaku Gothic New', sans-serif; font-weight: 700; cursor: pointer; transition: all 0.3s;">新しい順</button>
@@ -611,6 +670,12 @@
         let pendingPhotos = [];
         let editPendingPhotos = [];
         let editExistingPhotos = [];
+
+        // ==========================================
+        // 活動回数オフセット（アプリ導入前の実績を加算）
+        // ==========================================
+        const TOTAL_HISTORY_OFFSET      = 409; // 通算（個人活動も含む全期間）= 33 + 409 = 442
+        const CLEANVIBES_HISTORY_OFFSET = 392; // CleanVibes結成以降の通算       = 33 + 392 = 425
 
         // ==========================================
         // CHARACTER GROWTH SYSTEM
@@ -926,9 +991,82 @@
         }
 
         // ==========================================
+        // TOP COUNTERS & ROADMAP (活動記録トップ)
+        // ==========================================
+        function renderTopCounters() {
+            var area = document.getElementById('top-counters-area');
+            if (!area) return;
+            var year = new Date().getFullYear();
+            var yearCount = state.records.filter(function(r) { return new Date(r.date).getFullYear() === year; }).length;
+            var totalCount      = state.records.length + TOTAL_HISTORY_OFFSET;
+            var cleanVibesCount = state.records.length + CLEANVIBES_HISTORY_OFFSET;
+            area.innerHTML =
+                '<div class="top-counters">' +
+                '<div class="counter-card highlight">' +
+                  '<div class="counter-icon">✨</div>' +
+                  '<div class="counter-label">通算</div>' +
+                  '<div class="counter-num">' + totalCount + '</div>' +
+                  '<div class="counter-unit">回目</div>' +
+                '</div>' +
+                '<div class="counter-card">' +
+                  '<div class="counter-icon">🌊</div>' +
+                  '<div class="counter-label">CleanVibes</div>' +
+                  '<div class="counter-num">' + cleanVibesCount + '</div>' +
+                  '<div class="counter-unit">回目</div>' +
+                '</div>' +
+                '<div class="counter-card">' +
+                  '<div class="counter-icon">📅</div>' +
+                  '<div class="counter-label">' + year + '年</div>' +
+                  '<div class="counter-num">' + yearCount + '</div>' +
+                  '<div class="counter-unit">回目</div>' +
+                '</div>' +
+                '</div>';
+        }
+
+        function renderRoadmap() {
+            var area = document.getElementById('roadmap-area');
+            if (!area) return;
+            var now = new Date();
+            var year = now.getFullYear();
+            var startOfYear = new Date(year, 0, 1);
+            var endOfYear = new Date(year + 1, 0, 1);
+            var totalMs = endOfYear - startOfYear;
+            var elapsedMs = now - startOfYear;
+            var pct = Math.max(0, Math.min(100, (elapsedMs / totalMs) * 100));
+            var monthsLeft = 11 - now.getMonth();
+            var currentMonth = now.getMonth() + 1;
+            var monthLabels = '';
+            for (var m = 1; m <= 12; m++) {
+                var cls = m < currentMonth ? 'past' : (m === currentMonth ? 'current' : '');
+                monthLabels += '<span class="roadmap-month ' + cls + '">' + m + '</span>';
+            }
+            var statusText = monthsLeft === 0
+                ? '今月で年末！'
+                : '年末まで残り <strong>' + monthsLeft + 'ヶ月</strong>';
+            area.innerHTML =
+                '<div class="roadmap-card">' +
+                  '<div class="roadmap-header">' +
+                    '<div class="roadmap-title">🗺️ ' + year + '年のロードマップ</div>' +
+                    '<div class="roadmap-status">' + currentMonth + '月｜年の' + Math.round(pct) + '%</div>' +
+                  '</div>' +
+                  '<div class="roadmap-track-wrap">' +
+                    '<div class="roadmap-track">' +
+                      '<div class="roadmap-progress" style="width:' + pct + '%"></div>' +
+                      '<div class="roadmap-marker" style="left:' + pct + '%">🚶</div>' +
+                      '<div class="roadmap-goal">🎉</div>' +
+                    '</div>' +
+                    '<div class="roadmap-months">' + monthLabels + '</div>' +
+                  '</div>' +
+                  '<div class="roadmap-msg">' + statusText + '｜みんなで街を綺麗にしていこう！</div>' +
+                '</div>';
+        }
+
+        // ==========================================
         // RENDER RECORDS
         // ==========================================
         function renderRecords() {
+            renderTopCounters();
+            renderRoadmap();
             var list = document.getElementById('records-list');
             if (state.records.length === 0) {
                 list.innerHTML = '<div class="empty"><div class="empty-icon">🧹</div><div class="empty-text">まだ記録がありません<br>「記録を追加」から活動を記録しましょう！</div></div>';
@@ -1128,8 +1266,7 @@
         function renderStats() {
             var year = new Date().getFullYear();
             var yr = state.records.filter(function(r) { return new Date(r.date).getFullYear() === year; });
-            var PAST_ACTIVITY_COUNT = 392; // アプリ導入前の活動回数
-            document.getElementById('st-total').textContent = state.records.length + PAST_ACTIVITY_COUNT;
+            document.getElementById('st-total').textContent = state.records.length + TOTAL_HISTORY_OFFSET;
             document.getElementById('st-year').textContent = yr.length;
             document.getElementById('st-members').textContent = state.members.length;
 
