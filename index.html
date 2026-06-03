@@ -541,6 +541,7 @@
                 <div class="stat-card"><div class="stat-num" id="st-year">0</div><div class="stat-label">今年の活動回数</div></div>
                 <div class="stat-card"><div class="stat-num" id="st-members">0</div><div class="stat-label">登録メンバー数</div></div>
                 <div class="stat-card"><div class="stat-num" id="st-participants">0</div><div class="stat-label">今年の延べ参加人数</div></div>
+                <div class="stat-card" style="grid-column:1/-1;"><div class="stat-num" id="st-labor">¥0</div><div class="stat-label">ボランティア人件費換算（1回90分×時給1,300円）</div></div>
             </div>
             <div class="ranking-title">メンバー別参加回数ランキング（今年）</div>
             <div id="ranking-list"></div>
@@ -702,6 +703,10 @@
         const OHTAKE_2026_COUNT       = 48; // 大竹はランキング除外だが毎回参加。今年の参加回数
         const GUEST_PARTICIPANTS_2026 = 10; // 飛び入り・一般参加者の概算
 
+        // ボランティア人件費換算の前提
+        const AVG_ACTIVITY_MINUTES  = 90;   // 1回あたり平均活動時間（分）
+        const VOLUNTEER_HOURLY_WAGE = 1300; // ボランティア1人あたり時給（円）
+
         // ==========================================
         // メンバー名の表示（敬称付け／別名）
         // データ上の名前は変更せず、表示時のみ変換する
@@ -723,6 +728,11 @@
             var n = 0;
             yearRecords.forEach(function(r) { r.members.forEach(function(m) { if (exclude.indexOf(m) === -1) n++; }); });
             return n + OHTAKE_2026_COUNT + GUEST_PARTICIPANTS_2026;
+        }
+
+        // 延べ参加人数 × 1回の活動時間 × 時給 ＝ 人件費換算
+        function getLaborCost(participantTotal) {
+            return Math.round(participantTotal * (AVG_ACTIVITY_MINUTES / 60) * VOLUNTEER_HOURLY_WAGE);
         }
 
         // ==========================================
@@ -1071,6 +1081,12 @@
                   '<div class="counter-num">' + participantTotal + '</div>' +
                   '<div class="counter-unit">人</div>' +
                 '</div>' +
+                '<div class="counter-card highlight" style="grid-column:1/-1;">' +
+                  '<div class="counter-icon">💪</div>' +
+                  '<div class="counter-label">ボランティア人件費換算（' + year + '年）</div>' +
+                  '<div class="counter-num">¥' + getLaborCost(participantTotal).toLocaleString() + '</div>' +
+                  '<div class="counter-unit">のべ' + participantTotal + '人 × ' + AVG_ACTIVITY_MINUTES + '分 × 時給' + VOLUNTEER_HOURLY_WAGE.toLocaleString() + '円</div>' +
+                '</div>' +
                 '</div>';
         }
 
@@ -1342,7 +1358,9 @@
             yr.forEach(function(r) { r.members.forEach(function(m) { if (!excludeFromRanking.includes(m)) counts[m] = (counts[m] || 0) + 1; }); });
 
             // 今年の延べ参加人数（ホームのカウンターと同じ計算を共有）
-            document.getElementById('st-participants').textContent = getYearlyParticipantTotal(yr);
+            var participantTotal = getYearlyParticipantTotal(yr);
+            document.getElementById('st-participants').textContent = participantTotal;
+            document.getElementById('st-labor').textContent = '¥' + getLaborCost(participantTotal).toLocaleString();
             var sorted = Object.entries(counts).sort(function(a, b) { return b[1] - a[1]; });
             var max = sorted[0] ? sorted[0][1] : 1;
             var medals = ['🥇', '🥈', '🥉'];
