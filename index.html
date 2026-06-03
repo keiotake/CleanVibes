@@ -412,6 +412,12 @@
         .support-summary-item { padding: 10px; background: rgba(255,255,255,0.7); border-radius: 10px; }
         .support-summary-num { font-family: 'Space Mono', monospace; font-size: 1.3rem; font-weight: 700; color: #b45309; }
         .support-summary-label { font-size: 0.7rem; color: #92400e; }
+        .support-summary-item.total {
+            grid-column: 1 / -1; background: linear-gradient(135deg, #f59e0b, #b45309);
+            border: 2.5px solid #92400e; box-shadow: 0 4px 14px rgba(180,83,9,0.3); padding: 14px;
+        }
+        .support-summary-item.total .support-summary-num { color: #fff; font-size: 1.8rem; }
+        .support-summary-item.total .support-summary-label { color: rgba(255,255,255,0.95); font-weight: 800; font-size: 0.78rem; }
 
         .accounting-table { width: 100%; border-collapse: separate; border-spacing: 0; border-radius: 12px; overflow: hidden; border: 1.5px solid var(--gray-200); margin-bottom: 16px; }
         .accounting-table th { background: var(--gradient-main); color: var(--white); padding: 10px 12px; font-size: 0.8rem; font-weight: 700; text-align: left; }
@@ -1631,7 +1637,7 @@
                 '<div class="support-summary-item"><div class="support-summary-num">¥' + t.grant.toLocaleString() + '</div><div class="support-summary-label">助成金</div></div>' +
                 '<div class="support-summary-item"><div class="support-summary-num">¥' + t.donation.toLocaleString() + '</div><div class="support-summary-label">寄付金</div></div>' +
                 '<div class="support-summary-item"><div class="support-summary-num">¥' + t.item.toLocaleString() + '</div><div class="support-summary-label">物品応援（相当額）</div></div>' +
-                '<div class="support-summary-item"><div class="support-summary-num">¥' + t.grand.toLocaleString() + '</div><div class="support-summary-label">総額（相当額含む）</div></div>' +
+                '<div class="support-summary-item total"><div class="support-summary-num">¥' + t.grand.toLocaleString() + '</div><div class="support-summary-label">総額（相当額含む）</div></div>' +
                 '</div></div>';
         }
 
