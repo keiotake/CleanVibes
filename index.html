@@ -713,6 +713,10 @@
         const AVG_ACTIVITY_MINUTES  = 90;   // 1回あたり平均活動時間（分）
         const VOLUNTEER_HOURLY_WAGE = 1300; // ボランティア1人あたり時給（円）
 
+        // アプリ導入前（通算オフセット409回分）の延べ参加人数の概算
+        const HISTORY_PHASE1_COUNT = 300; const HISTORY_PHASE1_AVG = 3; // 1〜300回目: 平均3人
+        const HISTORY_PHASE2_COUNT = 109; const HISTORY_PHASE2_AVG = 4; // 301〜409回目: 平均4人
+
         // ==========================================
         // メンバー名の表示（敬称付け／別名）
         // データ上の名前は変更せず、表示時のみ変換する
@@ -739,6 +743,11 @@
         // 延べ参加人数 × 1回の活動時間 × 時給 ＝ 人件費換算
         function getLaborCost(participantTotal) {
             return Math.round(participantTotal * (AVG_ACTIVITY_MINUTES / 60) * VOLUNTEER_HOURLY_WAGE);
+        }
+
+        // アプリ導入前の延べ参加人数の概算（1〜300回×3人 + 301〜409回×4人）
+        function getHistoricalParticipantTotal() {
+            return HISTORY_PHASE1_COUNT * HISTORY_PHASE1_AVG + HISTORY_PHASE2_COUNT * HISTORY_PHASE2_AVG;
         }
 
         // ==========================================
@@ -1067,6 +1076,7 @@
             var yearCount = yr.length;
             var totalCount = state.records.length + TOTAL_HISTORY_OFFSET;
             var participantTotal = getYearlyParticipantTotal(yr);
+            var historicalTotal = getHistoricalParticipantTotal();
             area.innerHTML =
                 '<div class="top-counters">' +
                 '<div class="counter-card highlight">' +
@@ -1092,6 +1102,12 @@
                   '<div class="counter-label">ボランティア人件費換算（' + year + '年）</div>' +
                   '<div class="counter-num">¥' + getLaborCost(participantTotal).toLocaleString() + '</div>' +
                   '<div class="counter-unit">のべ' + participantTotal + '人 × ' + AVG_ACTIVITY_MINUTES + '分 × 時給' + VOLUNTEER_HOURLY_WAGE.toLocaleString() + '円</div>' +
+                '</div>' +
+                '<div class="counter-card highlight" style="grid-column:1/-1;">' +
+                  '<div class="counter-icon">🏛️</div>' +
+                  '<div class="counter-label">通算 人件費換算（活動開始〜・概算）</div>' +
+                  '<div class="counter-num">¥' + getLaborCost(historicalTotal + participantTotal).toLocaleString() + '</div>' +
+                  '<div class="counter-unit">のべ約' + (historicalTotal + participantTotal).toLocaleString() + '人（' + year + '年 ' + participantTotal + '人＋導入前 約' + historicalTotal.toLocaleString() + '人）</div>' +
                 '</div>' +
                 '</div>';
         }
