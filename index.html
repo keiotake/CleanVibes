@@ -566,6 +566,15 @@
                     </div>
                     <div class="form-group"><label>金額 / 品名 *</label><input id="sp-value" type="text" placeholder="例: 10000 または 清掃用具一式"></div>
                 </div>
+                <div class="form-grid" id="sp-money-fields">
+                    <div class="form-group">
+                        <label>区分（金銭）</label>
+                        <select id="sp-category" style="padding:11px 14px;border:1.5px solid var(--gray-200);border-radius:10px;font-family:'Zen Kaku Gothic New',sans-serif;font-size:1rem;">
+                            <option value="寄付金">寄付金</option>
+                            <option value="助成金">助成金</option>
+                        </select>
+                    </div>
+                </div>
                 <div class="form-grid" id="sp-item-fields" style="display:none;">
                     <div class="form-group">
                         <label>品名プリセット（選ぶと相当額が自動入力）</label>
@@ -1519,11 +1528,14 @@
             var type = document.getElementById('sp-type').value;
             var fields = document.getElementById('sp-item-fields');
             var val = document.getElementById('sp-value');
+            var moneyFields = document.getElementById('sp-money-fields');
             if (type === 'item') {
                 fields.style.display = '';
+                moneyFields.style.display = 'none';
                 val.placeholder = 'プルダウンで選択（手入力も可）';
             } else {
                 fields.style.display = 'none';
+                moneyFields.style.display = '';
                 val.placeholder = '例: 10000';
                 document.getElementById('sp-item-preset').value = '';
             }
@@ -1551,8 +1563,9 @@
             var value = document.getElementById('sp-value').value.trim();
             var memo = document.getElementById('sp-memo').value.trim();
             if (!name || !date || !value) { showToast('支援者名・日付・金額/品名は必須です'); return; }
+            var category = (type === 'money') ? document.getElementById('sp-category').value : '物品応援';
             if (!state.supports) state.supports = [];
-            state.supports.push({ id: Date.now(), name: name, date: date, type: type, value: value, memo: memo });
+            state.supports.push({ id: Date.now(), name: name, date: date, type: type, value: value, memo: memo, category: category });
             await saveToCloud();
             renderSupport();
             ['sp-name', 'sp-date', 'sp-value', 'sp-memo'].forEach(function(id) { document.getElementById(id).value = ''; });
@@ -1575,26 +1588,28 @@
             var summaryArea = document.getElementById('support-summary-area');
             var listArea = document.getElementById('support-list');
 
-            // Summary
-            var totalMoney = 0, totalItems = 0, totalItemEquiv = 0, uniqueDonors = {};
+            // Summary（助成金 / 寄付金 / 物品応援 の3カテゴリ別）
+            var grantTotal = 0, donationTotal = 0, totalItemEquiv = 0, uniqueDonors = {};
             supports.forEach(function(s) {
                 uniqueDonors[s.name] = true;
-                if (s.type === 'money') { var amt = parseInt(s.value); if (!isNaN(amt)) totalMoney += amt; }
-                else {
-                    totalItems++;
+                if (s.type === 'money') {
+                    var amt = parseInt(s.value); if (isNaN(amt)) amt = 0;
+                    if (s.category === '助成金') grantTotal += amt; else donationTotal += amt; // 既定は寄付金
+                } else {
                     var mm = (s.memo || '').match(/[¥￥]\s*([\d,]+)/); // 備考の「相当額 ¥◯◯」から金額を抽出
                     if (mm) { var iv = parseInt(mm[1].replace(/,/g, ''), 10); if (!isNaN(iv)) totalItemEquiv += iv; }
                 }
             });
-            var grandTotal = totalMoney + totalItemEquiv;
+            var grandTotal = grantTotal + donationTotal + totalItemEquiv;
             summaryArea.innerHTML = supports.length > 0 ? '<div class="support-summary">' +
                 '<div class="support-summary-title">ご支援の総計</div>' +
                 '<div class="support-summary-grid">' +
                 '<div class="support-summary-item"><div class="support-summary-num">' + Object.keys(uniqueDonors).length + '</div><div class="support-summary-label">支援者数</div></div>' +
                 '<div class="support-summary-item"><div class="support-summary-num">' + supports.length + '</div><div class="support-summary-label">支援件数</div></div>' +
-                '<div class="support-summary-item"><div class="support-summary-num">' + totalMoney.toLocaleString() + '</div><div class="support-summary-label">金銭支援（円）</div></div>' +
-                '<div class="support-summary-item"><div class="support-summary-num">' + totalItems + '</div><div class="support-summary-label">物品支援（件）</div></div>' +
-                '<div class="support-summary-item" style="grid-column:1/-1;"><div class="support-summary-num">¥' + grandTotal.toLocaleString() + '</div><div class="support-summary-label">総額（相当額・物品含む）</div></div>' +
+                '<div class="support-summary-item"><div class="support-summary-num">¥' + grantTotal.toLocaleString() + '</div><div class="support-summary-label">助成金</div></div>' +
+                '<div class="support-summary-item"><div class="support-summary-num">¥' + donationTotal.toLocaleString() + '</div><div class="support-summary-label">寄付金</div></div>' +
+                '<div class="support-summary-item"><div class="support-summary-num">¥' + totalItemEquiv.toLocaleString() + '</div><div class="support-summary-label">物品応援（相当額）</div></div>' +
+                '<div class="support-summary-item"><div class="support-summary-num">¥' + grandTotal.toLocaleString() + '</div><div class="support-summary-label">総額（相当額含む）</div></div>' +
                 '</div></div>' : '';
 
             // List
