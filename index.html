@@ -1504,19 +1504,25 @@
             var listArea = document.getElementById('support-list');
 
             // Summary
-            var totalMoney = 0, totalItems = 0, uniqueDonors = {};
+            var totalMoney = 0, totalItems = 0, totalItemEquiv = 0, uniqueDonors = {};
             supports.forEach(function(s) {
                 uniqueDonors[s.name] = true;
                 if (s.type === 'money') { var amt = parseInt(s.value); if (!isNaN(amt)) totalMoney += amt; }
-                else { totalItems++; }
+                else {
+                    totalItems++;
+                    var mm = (s.memo || '').match(/[¥￥]\s*([\d,]+)/); // 備考の「相当額 ¥◯◯」から金額を抽出
+                    if (mm) { var iv = parseInt(mm[1].replace(/,/g, ''), 10); if (!isNaN(iv)) totalItemEquiv += iv; }
+                }
             });
+            var grandTotal = totalMoney + totalItemEquiv;
             summaryArea.innerHTML = supports.length > 0 ? '<div class="support-summary">' +
                 '<div class="support-summary-title">ご支援の総計</div>' +
                 '<div class="support-summary-grid">' +
                 '<div class="support-summary-item"><div class="support-summary-num">' + Object.keys(uniqueDonors).length + '</div><div class="support-summary-label">支援者数</div></div>' +
                 '<div class="support-summary-item"><div class="support-summary-num">' + supports.length + '</div><div class="support-summary-label">支援件数</div></div>' +
                 '<div class="support-summary-item"><div class="support-summary-num">' + totalMoney.toLocaleString() + '</div><div class="support-summary-label">金銭支援（円）</div></div>' +
-                '<div class="support-summary-item"><div class="support-summary-num">' + totalItems + '</div><div class="support-summary-label">物品支援</div></div>' +
+                '<div class="support-summary-item"><div class="support-summary-num">' + totalItems + '</div><div class="support-summary-label">物品支援（件）</div></div>' +
+                '<div class="support-summary-item" style="grid-column:1/-1;"><div class="support-summary-num">¥' + grandTotal.toLocaleString() + '</div><div class="support-summary-label">総額（相当額・物品含む）</div></div>' +
                 '</div></div>' : '';
 
             // List
