@@ -589,6 +589,14 @@
                         <select id="sp-item-preset" onchange="applyItemPreset()" style="padding:11px 14px;border:1.5px solid var(--gray-200);border-radius:10px;font-family:'Zen Kaku Gothic New',sans-serif;font-size:1rem;"></select>
                     </div>
                     <div class="form-group"><label>数量（<span id="sp-qty-unit">個</span>）</label><input id="sp-qty" type="number" min="1" step="1" value="1" oninput="applyItemPreset()"></div>
+                    <div class="form-group full">
+                        <label>区分（物品）</label>
+                        <select id="sp-item-category" style="padding:11px 14px;border:1.5px solid var(--gray-200);border-radius:10px;font-family:'Zen Kaku Gothic New',sans-serif;font-size:1rem;">
+                            <option value="物品応援">物品応援（市民）</option>
+                            <option value="代表提供">代表提供資材（大竹）</option>
+                            <option value="行政支給">行政支給</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="form-grid">
                     <div class="form-group full"><label>備考</label><input id="sp-memo" type="text" placeholder="メッセージや詳細など"></div>
@@ -1604,7 +1612,7 @@
             var value = document.getElementById('sp-value').value.trim();
             var memo = document.getElementById('sp-memo').value.trim();
             if (!name || !date || !value) { showToast('支援者名・日付・金額/品名は必須です'); return; }
-            var category = (type === 'money') ? document.getElementById('sp-category').value : '物品応援';
+            var category = (type === 'money') ? document.getElementById('sp-category').value : document.getElementById('sp-item-category').value;
             if (!state.supports) state.supports = [];
             state.supports.push({ id: Date.now(), name: name, date: date, type: type, value: value, memo: memo, category: category });
             await saveToCloud();
@@ -1624,10 +1632,10 @@
             showToast('支援記録を削除しました');
         }
 
-        // 支援の集計（助成金 / 寄付金 / 物品応援）
+        // 支援の集計（助成金 / 寄付金 / 物品応援 / 代表提供 / 行政支給）
         function getSupportTotals() {
             var supports = state.supports || [];
-            var grant = 0, donation = 0, item = 0, donors = {};
+            var grant = 0, donation = 0, item = 0, rep = 0, gov = 0, donors = {};
             supports.forEach(function(s) {
                 donors[s.name] = true;
                 if (s.type === 'money') {
@@ -1635,10 +1643,13 @@
                     if (s.category === '助成金') grant += amt; else donation += amt; // 既定は寄付金
                 } else {
                     var mm = (s.memo || '').match(/[¥￥]\s*([\d,]+)/); // 備考の「相当額 ¥◯◯」から抽出
-                    if (mm) { var iv = parseInt(mm[1].replace(/,/g, ''), 10); if (!isNaN(iv)) item += iv; }
+                    var iv = mm ? (parseInt(mm[1].replace(/,/g, ''), 10) || 0) : 0;
+                    if (s.category === '代表提供') rep += iv;
+                    else if (s.category === '行政支給') gov += iv;
+                    else item += iv; // 既定は市民の物品応援
                 }
             });
-            return { donors: Object.keys(donors).length, count: supports.length, grant: grant, donation: donation, item: item, grand: grant + donation + item };
+            return { donors: Object.keys(donors).length, count: supports.length, grant: grant, donation: donation, item: item, rep: rep, gov: gov, grand: grant + donation + item + rep + gov };
         }
 
         // 支援サマリーのHTML（支援タブ・ホーム共通）
@@ -1652,7 +1663,9 @@
                 '<div class="support-summary-item"><div class="support-summary-num">' + t.count + '</div><div class="support-summary-label">支援件数</div></div>' +
                 '<div class="support-summary-item"><div class="support-summary-num">¥' + t.grant.toLocaleString() + '</div><div class="support-summary-label">助成金</div></div>' +
                 '<div class="support-summary-item"><div class="support-summary-num">¥' + t.donation.toLocaleString() + '</div><div class="support-summary-label">寄付金</div></div>' +
-                '<div class="support-summary-item"><div class="support-summary-num">¥' + t.item.toLocaleString() + '</div><div class="support-summary-label">物品応援（相当額）</div></div>' +
+                '<div class="support-summary-item"><div class="support-summary-num">¥' + t.item.toLocaleString() + '</div><div class="support-summary-label">物品応援（市民・相当額）</div></div>' +
+                (t.rep > 0 ? '<div class="support-summary-item"><div class="support-summary-num">¥' + t.rep.toLocaleString() + '</div><div class="support-summary-label">代表提供資材（相当額）</div></div>' : '') +
+                (t.gov > 0 ? '<div class="support-summary-item"><div class="support-summary-num">¥' + t.gov.toLocaleString() + '</div><div class="support-summary-label">行政支給（相当額）</div></div>' : '') +
                 '<div class="support-summary-item total"><div class="support-summary-num">¥' + t.grand.toLocaleString() + '</div><div class="support-summary-label">総額（相当額含む）</div></div>' +
                 '</div></div>';
         }
