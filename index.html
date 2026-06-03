@@ -135,7 +135,7 @@
         .checkbox-label input { display: none; }
 
         /* === STATS === */
-        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 20px; }
         .stat-card {
             background: var(--white); border: 1.5px solid var(--gray-200); border-radius: 16px;
             padding: 20px; text-align: center; transition: all 0.3s;
@@ -256,7 +256,7 @@
         .member-add-row input { flex: 1; }
 
         /* === ROADMAP / COUNTERS (Top of Records) === */
-        .top-counters { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+        .top-counters { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px; }
         .counter-card {
             background: var(--white); border: 2px solid transparent; border-radius: 16px;
             padding: 14px 10px; text-align: center; position: relative; overflow: hidden;
@@ -539,6 +539,7 @@
                 <div class="stat-card"><div class="stat-num" id="st-total">0</div><div class="stat-label">総活動回数</div></div>
                 <div class="stat-card"><div class="stat-num" id="st-year">0</div><div class="stat-label">今年の活動回数</div></div>
                 <div class="stat-card"><div class="stat-num" id="st-members">0</div><div class="stat-label">登録メンバー数</div></div>
+                <div class="stat-card"><div class="stat-num" id="st-participants">0</div><div class="stat-label">今年の延べ参加人数</div></div>
             </div>
             <div class="ranking-title">メンバー別参加回数ランキング（今年）</div>
             <div id="ranking-list"></div>
@@ -679,6 +680,33 @@
         // ==========================================
         const TOTAL_HISTORY_OFFSET      = 409; // 通算（個人活動も含む全期間）= 33 + 409 = 442
         const CLEANVIBES_HISTORY_OFFSET = 392; // CleanVibes結成以降の通算       = 33 + 392 = 425
+
+        // 今年の延べ参加人数への加算分（記録に含まれない参加者を手動補正）
+        const OHTAKE_2026_COUNT       = 48; // 大竹はランキング除外だが毎回参加。今年の参加回数
+        const GUEST_PARTICIPANTS_2026 = 10; // 飛び入り・一般参加者の概算
+
+        // ==========================================
+        // メンバー名の表示（敬称付け／別名）
+        // データ上の名前は変更せず、表示時のみ変換する
+        // ==========================================
+        const MEMBER_DISPLAY_ALIAS = { '山川奥様': '美恵' }; // 別名（旧名→表示名）
+        const HONORIFIC_SUFFIXES   = ['さん', 'ちゃん', 'くん', '君', '様', '市議', '議員', '先生', '氏']; // 既に敬称/肩書が付く名前は「さん」を足さない
+        function displayName(name) {
+            var n = MEMBER_DISPLAY_ALIAS[name] || name;
+            for (var i = 0; i < HONORIFIC_SUFFIXES.length; i++) {
+                var suf = HONORIFIC_SUFFIXES[i];
+                if (n.length >= suf.length && n.slice(-suf.length) === suf) return n;
+            }
+            return n + 'さん';
+        }
+
+        // 指定年の延べ参加人数 = 記録上の延べ人数（大竹除く）+ 大竹 + 飛び入り
+        function getYearlyParticipantTotal(yearRecords) {
+            var exclude = ['大竹'];
+            var n = 0;
+            yearRecords.forEach(function(r) { r.members.forEach(function(m) { if (exclude.indexOf(m) === -1) n++; }); });
+            return n + OHTAKE_2026_COUNT + GUEST_PARTICIPANTS_2026;
+        }
 
         // ==========================================
         // CHARACTER GROWTH SYSTEM
@@ -931,7 +959,7 @@
             var c = document.getElementById('member-checkboxes');
             c.innerHTML = state.members.length === 0
                 ? '<span style="color:var(--gray-400);font-size:.85rem;">まずメンバーを登録してください</span>'
-                : state.members.map(function(m) { return '<label class="checkbox-label"><input type="checkbox" value="' + m + '"> ' + m + '</label>'; }).join('');
+                : state.members.map(function(m) { return '<label class="checkbox-label"><input type="checkbox" value="' + m + '"> ' + displayName(m) + '</label>'; }).join('');
         }
 
         async function addRecord() {
@@ -1000,8 +1028,10 @@
             var area = document.getElementById('top-counters-area');
             if (!area) return;
             var year = new Date().getFullYear();
-            var yearCount = state.records.filter(function(r) { return new Date(r.date).getFullYear() === year; }).length;
+            var yr = state.records.filter(function(r) { return new Date(r.date).getFullYear() === year; });
+            var yearCount = yr.length;
             var totalCount = state.records.length + TOTAL_HISTORY_OFFSET;
+            var participantTotal = getYearlyParticipantTotal(yr);
             area.innerHTML =
                 '<div class="top-counters">' +
                 '<div class="counter-card highlight">' +
@@ -1015,6 +1045,12 @@
                   '<div class="counter-label">' + year + '年</div>' +
                   '<div class="counter-num">' + yearCount + '</div>' +
                   '<div class="counter-unit">回目</div>' +
+                '</div>' +
+                '<div class="counter-card">' +
+                  '<div class="counter-icon">🤝</div>' +
+                  '<div class="counter-label">' + year + '年 延べ参加</div>' +
+                  '<div class="counter-num">' + participantTotal + '</div>' +
+                  '<div class="counter-unit">人</div>' +
                 '</div>' +
                 '</div>';
         }
@@ -1097,7 +1133,7 @@
                 var dateStr = r.date.includes('T') ? r.date.split('T')[0] : r.date;
                 var d = new Date(dateStr + 'T00:00:00');
                 var ds = d.getFullYear() + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getDate()).padStart(2, '0');
-                var tags = r.members.map(function(m) { return '<span class="tag">' + m + '</span>'; }).join('');
+                var tags = r.members.map(function(m) { return '<span class="tag">' + displayName(m) + '</span>'; }).join('');
                 var photosHtml = (r.photos && r.photos.length > 0)
                     ? '<div class="photo-grid">' + r.photos.map(function(url) {
                         var fullUrl = url.replace('sz=w800', 'sz=w1600');
@@ -1153,7 +1189,7 @@
             var c = document.getElementById('e-member-checkboxes');
             c.innerHTML = state.members.length === 0
                 ? '<span style="color:var(--gray-400);font-size:.85rem;">メンバーが登録されていません</span>'
-                : state.members.map(function(m) { return '<label class="checkbox-label"><input type="checkbox" value="' + m + '"' + (r.members.includes(m) ? ' checked' : '') + '> ' + m + '</label>'; }).join('');
+                : state.members.map(function(m) { return '<label class="checkbox-label"><input type="checkbox" value="' + m + '"' + (r.members.includes(m) ? ' checked' : '') + '> ' + displayName(m) + '</label>'; }).join('');
             editExistingPhotos = r.photos ? [...r.photos] : [];
             editPendingPhotos = [];
             renderEditPhotoPreview();
@@ -1260,7 +1296,7 @@
                 var deleteBtn = isAdmin ? '<button class="delete-member-btn" onclick="deleteMember(\'' + m.replace(/'/g, "\\'") + '\')">削除</button>' : '';
                 return '<div class="member-card">' +
                     '<span class="char-avatar">' + level.emoji + '</span>' +
-                    '<div class="char-name">' + m + '</div>' +
+                    '<div class="char-name">' + displayName(m) + '</div>' +
                     '<div class="char-title">' + level.title + '</div>' +
                     '<div class="char-count">' + cnt + ' 回参加</div>' +
                     '<div class="char-bar"><div class="char-bar-fill" style="width:' + progress + '%"></div></div>' +
@@ -1285,6 +1321,9 @@
             var counts = {};
             var excludeFromRanking = ['大竹'];
             yr.forEach(function(r) { r.members.forEach(function(m) { if (!excludeFromRanking.includes(m)) counts[m] = (counts[m] || 0) + 1; }); });
+
+            // 今年の延べ参加人数（ホームのカウンターと同じ計算を共有）
+            document.getElementById('st-participants').textContent = getYearlyParticipantTotal(yr);
             var sorted = Object.entries(counts).sort(function(a, b) { return b[1] - a[1]; });
             var max = sorted[0] ? sorted[0][1] : 1;
             var medals = ['🥇', '🥈', '🥉'];
@@ -1300,7 +1339,7 @@
                     var badge = i < 3 ? '<span class="rank-badge ' + rc[i] + '">' + medals[i] + '</span>' : '<span class="rank-badge rank-n">' + (i + 1) + '</span>';
                     var charDisplay = '<div class="rank-character"><span class="character-display">' + level.emoji + '</span><span class="character-level">' + level.title + '</span></div>';
                     return '<div class="rank-item">' + badge +
-                        '<div class="rank-item-inner"><div style="display:flex;align-items:center;gap:8px;"><span class="rank-name">' + name + '</span>' + charDisplay + '</div>' +
+                        '<div class="rank-item-inner"><div style="display:flex;align-items:center;gap:8px;"><span class="rank-name">' + displayName(name) + '</span>' + charDisplay + '</div>' +
                         '<div class="rank-bar-bg"><div class="rank-bar" style="width:' + pct + '%"></div></div></div>' +
                         '<span class="rank-count">' + cnt + '</span></div>';
                 }).join('');
