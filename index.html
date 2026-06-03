@@ -559,12 +559,19 @@
                 <div class="form-grid">
                     <div class="form-group">
                         <label>種別 *</label>
-                        <select id="sp-type" style="padding:11px 14px;border:1.5px solid var(--gray-200);border-radius:10px;font-family:'Zen Kaku Gothic New',sans-serif;font-size:1rem;">
+                        <select id="sp-type" onchange="onSupportTypeChange()" style="padding:11px 14px;border:1.5px solid var(--gray-200);border-radius:10px;font-family:'Zen Kaku Gothic New',sans-serif;font-size:1rem;">
                             <option value="money">金銭</option>
                             <option value="item">物品</option>
                         </select>
                     </div>
                     <div class="form-group"><label>金額 / 品名 *</label><input id="sp-value" type="text" placeholder="例: 10000 または 清掃用具一式"></div>
+                </div>
+                <div class="form-grid" id="sp-item-fields" style="display:none;">
+                    <div class="form-group">
+                        <label>品名プリセット（選ぶと相当額が自動入力）</label>
+                        <select id="sp-item-preset" onchange="applyItemPreset()" style="padding:11px 14px;border:1.5px solid var(--gray-200);border-radius:10px;font-family:'Zen Kaku Gothic New',sans-serif;font-size:1rem;"></select>
+                    </div>
+                    <div class="form-group"><label>数量（<span id="sp-qty-unit">個</span>）</label><input id="sp-qty" type="number" min="1" step="1" value="1" oninput="applyItemPreset()"></div>
                 </div>
                 <div class="form-grid">
                     <div class="form-group full"><label>備考</label><input id="sp-memo" type="text" placeholder="メッセージや詳細など"></div>
@@ -850,6 +857,8 @@
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('f-photos').addEventListener('change', handleAddPhotos);
             document.getElementById('e-photos').addEventListener('change', handleEditPhotos);
+            populateSupportItemPresets();
+            onSupportTypeChange();
         });
 
         async function handleAddPhotos(e) {
@@ -1474,6 +1483,67 @@
         // ==========================================
         // SUPPORT (ご支援リスト)
         // ==========================================
+        // 物品の単価カタログ（packPrice ÷ packQty = 1単位あたり単価）
+        const SUPPORT_ITEM_NOTE = '（Amazon価格は変動するため相当額表記）';
+        const SUPPORT_ITEM_CATALOG = [
+            { name: 'ガラ袋',             unit: '枚', packQty: 25, packPrice: 1678 },
+            { name: '土嚢袋',             unit: '枚', packQty: 50, packPrice: 1336 },
+            { name: '外苑ほうき',         unit: '本', packQty: 1,  packPrice: 2084 },
+            { name: '草取り一番',         unit: '本', packQty: 1,  packPrice: 405  },
+            { name: 'パワーグリップ草取り', unit: '本', packQty: 1,  packPrice: 805  },
+            { name: '根こそぎ草抜き',     unit: '本', packQty: 1,  packPrice: 1368 },
+            { name: '手箕（テミ小）',     unit: '個', packQty: 1,  packPrice: 1430 },
+            { name: 'スコップ',           unit: '本', packQty: 1,  packPrice: 2899 },
+            { name: 'ツルハシ',           unit: '本', packQty: 1,  packPrice: 4722 },
+            { name: '三角コーン（パイロン）', unit: '本', packQty: 1, packPrice: 1010 },
+            { name: 'コーン用カバー',     unit: '枚', packQty: 1,  packPrice: 1577 },
+            { name: '富士ガスバーナー',   unit: '本', packQty: 1,  packPrice: 6295 },
+            { name: 'セスキ炭酸ソーダ5kg', unit: '袋', packQty: 1, packPrice: 1737 },
+            { name: 'マサファルト',       unit: '袋', packQty: 1,  packPrice: 2440 },
+            { name: '散水パッチ',         unit: '袋', packQty: 1,  packPrice: 3069 },
+        ];
+
+        function populateSupportItemPresets() {
+            var sel = document.getElementById('sp-item-preset');
+            if (!sel) return;
+            var opts = ['<option value="">― 品名を選択（手入力も可）―</option>'];
+            SUPPORT_ITEM_CATALOG.forEach(function(it, i) {
+                var basis = '¥' + it.packPrice.toLocaleString() + '/' + (it.packQty > 1 ? it.packQty : '') + it.unit;
+                opts.push('<option value="' + i + '">' + it.name + '（' + basis + '）</option>');
+            });
+            sel.innerHTML = opts.join('');
+        }
+
+        // 種別の切替で物品プリセット欄を表示/非表示
+        function onSupportTypeChange() {
+            var type = document.getElementById('sp-type').value;
+            var fields = document.getElementById('sp-item-fields');
+            var val = document.getElementById('sp-value');
+            if (type === 'item') {
+                fields.style.display = '';
+                val.placeholder = 'プルダウンで選択（手入力も可）';
+            } else {
+                fields.style.display = 'none';
+                val.placeholder = '例: 10000';
+                document.getElementById('sp-item-preset').value = '';
+            }
+        }
+
+        // プリセット選択／数量変更で 品名 と 相当額(備考) を自動入力
+        function applyItemPreset() {
+            var sel = document.getElementById('sp-item-preset');
+            var idx = sel.value;
+            if (idx === '') return; // 手入力のまま
+            var it = SUPPORT_ITEM_CATALOG[parseInt(idx, 10)];
+            if (!it) return;
+            var qty = parseInt(document.getElementById('sp-qty').value, 10);
+            if (isNaN(qty) || qty <= 0) qty = 1;
+            var amount = Math.round((it.packPrice / it.packQty) * qty);
+            document.getElementById('sp-value').value = it.name + ' ' + qty + it.unit;
+            document.getElementById('sp-memo').value = '相当額 ¥' + amount.toLocaleString() + SUPPORT_ITEM_NOTE;
+            document.getElementById('sp-qty-unit').textContent = it.unit;
+        }
+
         async function addSupport() {
             var name = document.getElementById('sp-name').value.trim();
             var date = document.getElementById('sp-date').value;
@@ -1486,6 +1556,8 @@
             await saveToCloud();
             renderSupport();
             ['sp-name', 'sp-date', 'sp-value', 'sp-memo'].forEach(function(id) { document.getElementById(id).value = ''; });
+            document.getElementById('sp-item-preset').value = '';
+            document.getElementById('sp-qty').value = '1';
             showToast('ご支援を記録しました');
         }
 
