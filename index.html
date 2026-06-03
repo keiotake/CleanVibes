@@ -485,7 +485,6 @@
         <!-- Records Panel -->
         <div id="panel-records" class="panel active">
             <div id="top-counters-area"></div>
-            <div id="roadmap-area"></div>
             <div id="home-support-area" style="margin-bottom: 14px;"></div>
             <div style="margin-bottom: 14px; display: flex; gap: 8px;">
                 <button id="add-toggle" onclick="toggleAddForm()" class="add-toggle-btn">+ 記録を追加</button>
@@ -549,6 +548,8 @@
                 <div class="stat-card"><div class="stat-num" id="st-participants">0</div><div class="stat-label">今年の延べ参加人数</div></div>
                 <div class="stat-card" style="grid-column:1/-1;"><div class="stat-num" id="st-labor">¥0</div><div class="stat-label">ボランティア人件費換算（1回90分×時給1,300円）</div></div>
             </div>
+            <div id="stats-labor-total-area"></div>
+            <div id="stats-support-area"></div>
             <div class="ranking-title">メンバー別参加回数ランキング（今年）</div>
             <div id="ranking-list"></div>
             <div id="heatmap-area"></div>
@@ -1084,7 +1085,6 @@
             var yearCount = yr.length;
             var totalCount = state.records.length + TOTAL_HISTORY_OFFSET;
             var participantTotal = getYearlyParticipantTotal(yr);
-            var historicalTotal = getHistoricalParticipantTotal();
             area.innerHTML =
                 '<div class="top-counters">' +
                 '<div class="counter-card highlight">' +
@@ -1110,12 +1110,6 @@
                   '<div class="counter-label">ボランティア人件費換算（' + year + '年）</div>' +
                   '<div class="counter-num">¥' + getLaborCost(participantTotal).toLocaleString() + '</div>' +
                   '<div class="counter-unit">のべ' + participantTotal + '人 × ' + AVG_ACTIVITY_MINUTES + '分 × 時給' + VOLUNTEER_HOURLY_WAGE.toLocaleString() + '円</div>' +
-                '</div>' +
-                '<div class="counter-card highlight" style="grid-column:1/-1;">' +
-                  '<div class="counter-icon">🏛️</div>' +
-                  '<div class="counter-label">通算 人件費換算（活動開始〜・概算）</div>' +
-                  '<div class="counter-num">¥' + getLaborCost(historicalTotal + participantTotal).toLocaleString() + '</div>' +
-                  '<div class="counter-unit">のべ約' + (historicalTotal + participantTotal).toLocaleString() + '人（' + year + '年 ' + participantTotal + '人＋導入前 約' + historicalTotal.toLocaleString() + '人）</div>' +
                 '</div>' +
                 '</div>';
         }
@@ -1183,7 +1177,6 @@
         // ==========================================
         function renderRecords() {
             renderTopCounters();
-            renderRoadmap();
             var list = document.getElementById('records-list');
             if (state.records.length === 0) {
                 list.innerHTML = '<div class="empty"><div class="empty-icon">🧹</div><div class="empty-text">まだ記録がありません<br>「記録を追加」から活動を記録しましょう！</div></div>';
@@ -1391,6 +1384,20 @@
             var participantTotal = getYearlyParticipantTotal(yr);
             document.getElementById('st-participants').textContent = participantTotal;
             document.getElementById('st-labor').textContent = '¥' + getLaborCost(participantTotal).toLocaleString();
+
+            // 通算 人件費換算（ホームから集計へ移動）
+            var historicalTotal = getHistoricalParticipantTotal();
+            var allTimeParticipants = historicalTotal + participantTotal;
+            document.getElementById('stats-labor-total-area').innerHTML =
+                '<div class="support-summary"><div class="support-summary-title">🏛️ 通算 人件費換算（活動開始〜・概算）</div>' +
+                '<div class="support-summary-grid">' +
+                '<div class="support-summary-item total"><div class="support-summary-num">¥' + getLaborCost(allTimeParticipants).toLocaleString() + '</div>' +
+                '<div class="support-summary-label">のべ約' + allTimeParticipants.toLocaleString() + '人（' + year + '年 ' + participantTotal + '人＋導入前 約' + historicalTotal.toLocaleString() + '人）／1回' + AVG_ACTIVITY_MINUTES + '分×時給' + VOLUNTEER_HOURLY_WAGE.toLocaleString() + '円</div></div>' +
+                '</div></div>';
+
+            // ご支援の総計（通算・詳細）＋大口の補足
+            document.getElementById('stats-support-area').innerHTML =
+                supportSummaryHTML(null, 'ご支援の総計（通算）') + supportDetailNotesHTML();
             var sorted = Object.entries(counts).sort(function(a, b) { return b[1] - a[1]; });
             var max = sorted[0] ? sorted[0][1] : 1;
             var medals = ['🥇', '🥈', '🥉'];
@@ -1633,8 +1640,11 @@
         }
 
         // 支援の集計（助成金 / 寄付金 / 物品応援 / 代表提供 / 行政支給）
-        function getSupportTotals() {
-            var supports = state.supports || [];
+        function getSupportTotals(year) {
+            var supports = (state.supports || []).filter(function(s) {
+                if (year == null) return true;
+                return new Date(s.date + 'T00:00:00').getFullYear() === year;
+            });
             var grant = 0, donation = 0, item = 0, rep = 0, gov = 0, donors = {};
             supports.forEach(function(s) {
                 donors[s.name] = true;
@@ -1652,28 +1662,49 @@
             return { donors: Object.keys(donors).length, count: supports.length, grant: grant, donation: donation, item: item, rep: rep, gov: gov, grand: grant + donation + item + rep + gov };
         }
 
-        // 支援サマリーのHTML（支援タブ・ホーム共通）
-        function supportSummaryHTML() {
-            var t = getSupportTotals();
+        // 支援サマリーのHTML（年フィルタ可・タイトル可）
+        function supportSummaryHTML(year, title) {
+            var t = getSupportTotals(year);
             if (t.count === 0) return '';
+            function card(num, label, cls) {
+                return '<div class="support-summary-item' + (cls ? ' ' + cls : '') + '"><div class="support-summary-num">' + num + '</div><div class="support-summary-label">' + label + '</div></div>';
+            }
             return '<div class="support-summary">' +
-                '<div class="support-summary-title">ご支援の総計</div>' +
+                '<div class="support-summary-title">' + (title || 'ご支援の総計') + '</div>' +
                 '<div class="support-summary-grid">' +
-                '<div class="support-summary-item"><div class="support-summary-num">' + t.donors + '</div><div class="support-summary-label">支援者数</div></div>' +
-                '<div class="support-summary-item"><div class="support-summary-num">' + t.count + '</div><div class="support-summary-label">支援件数</div></div>' +
-                '<div class="support-summary-item"><div class="support-summary-num">¥' + t.grant.toLocaleString() + '</div><div class="support-summary-label">助成金</div></div>' +
-                '<div class="support-summary-item"><div class="support-summary-num">¥' + t.donation.toLocaleString() + '</div><div class="support-summary-label">寄付金</div></div>' +
-                '<div class="support-summary-item"><div class="support-summary-num">¥' + t.item.toLocaleString() + '</div><div class="support-summary-label">物品応援（市民・相当額）</div></div>' +
-                (t.rep > 0 ? '<div class="support-summary-item"><div class="support-summary-num">¥' + t.rep.toLocaleString() + '</div><div class="support-summary-label">メンバー提供私財（相当額）</div></div>' : '') +
-                (t.gov > 0 ? '<div class="support-summary-item"><div class="support-summary-num">¥' + t.gov.toLocaleString() + '</div><div class="support-summary-label">行政支給（相当額）</div></div>' : '') +
-                '<div class="support-summary-item total"><div class="support-summary-num">¥' + t.grand.toLocaleString() + '</div><div class="support-summary-label">総額（相当額含む）</div></div>' +
+                card(t.donors, '支援者数') +
+                card(t.count, '支援件数') +
+                (t.grant > 0 ? card('¥' + t.grant.toLocaleString(), '助成金') : '') +
+                (t.donation > 0 ? card('¥' + t.donation.toLocaleString(), '寄付金') : '') +
+                (t.item > 0 ? card('¥' + t.item.toLocaleString(), '物品応援（市民・相当額）') : '') +
+                (t.rep > 0 ? card('¥' + t.rep.toLocaleString(), 'メンバー提供私財（相当額）') : '') +
+                (t.gov > 0 ? card('¥' + t.gov.toLocaleString(), '行政支給（相当額）') : '') +
+                card('¥' + t.grand.toLocaleString(), '総額（相当額含む）', 'total') +
                 '</div></div>';
         }
 
-        // ホーム（活動記録トップ）にも支援総計を表示
+        // 集計タブ用：大口支援の内訳・補足
+        function supportDetailNotesHTML() {
+            var t = getSupportTotals();
+            if (t.rep <= 0 && t.gov <= 0) return '';
+            var body = '';
+            if (t.rep > 0) {
+                body += '<p style="margin:0 0 10px;"><strong>■ メンバー提供私財：¥' + t.rep.toLocaleString() + '（あくまで少なく見積もった最低額）</strong><br>' +
+                    '舗装施工用の固まる砂（約800m分）、ゴミ袋、渚公園駐車場の塗料、市内各地の歩道整備用の散水パッチ、その他備品一式。実際の支出はこれを上回ります。</p>';
+            }
+            if (t.gov > 0) {
+                body += '<p style="margin:0;"><strong>■ 行政支給（アダプトロード）：¥' + t.gov.toLocaleString() + '（相当額）</strong><br>' +
+                    '2024年に締結したアダプトロード協定に基づく静岡県からの物品支給。初年度2024年が約20万円、2025年が約2万円相当の物品支給です。</p>';
+            }
+            return '<div class="support-summary" style="text-align:left;">' +
+                '<div class="support-summary-title">ご支援の内訳・補足</div>' +
+                '<div style="font-size:0.82rem; color:#92400e; line-height:1.7;">' + body + '</div></div>';
+        }
+
+        // ホーム（活動記録トップ）は当年分のみ表示
         function renderHomeSupport() {
             var area = document.getElementById('home-support-area');
-            if (area) area.innerHTML = supportSummaryHTML();
+            if (area) area.innerHTML = supportSummaryHTML(new Date().getFullYear(), 'ご支援の総計（' + new Date().getFullYear() + '年）');
         }
 
         function renderSupport() {
