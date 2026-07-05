@@ -479,6 +479,31 @@
             .balance-amount { font-size: 1.5rem; }
         }
 
+        /* === BEFORE / AFTER PAIRS === */
+        .pair-row { background: var(--paper-2); border: 1px solid var(--hair); border-radius: 12px; padding: 12px; margin-bottom: 10px; position: relative; }
+        .pair-row-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+        .pair-row-head input { flex: 1; padding: 9px 12px; font-size: 0.88rem; }
+        .pair-remove { background: none; border: 1px solid var(--hair-dark); border-radius: 8px; width: 32px; height: 32px; color: var(--gray-400); cursor: pointer; flex-shrink: 0; }
+        .pair-remove:hover, .pair-remove:active { border-color: var(--danger); color: var(--danger); }
+        .pair-slots { display: grid; grid-template-columns: 1fr auto 1fr; gap: 8px; align-items: center; }
+        .pair-slot { border: 1.5px dashed var(--hair-dark); border-radius: 10px; min-height: 92px; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; overflow: hidden; background: var(--card); transition: border-color 0.2s; }
+        .pair-slot:hover, .pair-slot:active { border-color: var(--ocean); }
+        .pair-slot img { width: 100%; height: 92px; object-fit: cover; display: block; }
+        .pair-slot-label { font-size: 0.72rem; color: var(--gray-400); font-weight: 700; text-align: center; line-height: 1.6; }
+        .pair-arrow { font-size: 1.1rem; color: var(--teal); font-weight: 700; }
+        .pair-badge { position: absolute; top: 4px; left: 4px; font-size: 0.6rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; color: #fff; letter-spacing: 0.06em; z-index: 2; }
+        .pair-badge.before { background: rgba(15,42,57,0.75); }
+        .pair-badge.after { background: var(--gradient-vivid); }
+        .pair-add-btn { width: 100%; padding: 11px; background: var(--card); border: 1.5px dashed rgba(17,181,164,0.55); border-radius: 12px; color: var(--moss); font-family: 'Zen Kaku Gothic New', sans-serif; font-weight: 700; font-size: 0.86rem; cursor: pointer; transition: all 0.2s; }
+        .pair-add-btn:hover, .pair-add-btn:active { background: var(--sky); border-style: solid; }
+        /* 記録カード内のBefore/After表示 */
+        .card-pairs { margin-top: 10px; }
+        .card-pair { display: grid; grid-template-columns: 1fr auto 1fr; gap: 6px; align-items: center; margin-top: 8px; }
+        .card-pair-label { grid-column: 1 / -1; font-size: 0.72rem; font-weight: 700; color: var(--ink-soft); letter-spacing: 0.04em; }
+        .card-pair .ph { position: relative; border-radius: 10px; overflow: hidden; border: 1px solid var(--hair); }
+        .card-pair .ph img { width: 100%; height: 110px; object-fit: cover; display: block; cursor: pointer; }
+        @media (max-width: 640px) { .card-pair .ph img { height: 96px; } .pair-slot img { height: 84px; } .pair-slot { min-height: 84px; } }
+
         /* === FOOTER === */
         .app-footer { max-width: 1080px; margin: 0 auto; padding: 38px 22px 32px; text-align: center; border-top: 1px solid var(--hair); margin-top: 24px; }
         .footer-logo { height: 46px; opacity: 0.6; margin-bottom: 10px; }
@@ -520,6 +545,7 @@
             <div style="margin-bottom: 14px; display: flex; gap: 8px;">
                 <button id="add-toggle" onclick="toggleAddForm()" class="add-toggle-btn">+ 記録を追加</button>
                 <button id="sort-btn" onclick="toggleSort()" style="background: var(--ink); color: #fff; border: none; border-radius: 12px; padding: 12px 20px; font-family: 'Zen Kaku Gothic New', sans-serif; font-weight: 700; letter-spacing: 0.08em; cursor: pointer; transition: all 0.22s; white-space: nowrap; flex-shrink: 0;">新しい順</button>
+                <button id="report-btn" onclick="generateReport()" style="background: var(--gradient-vivid); color: #fff; border: none; border-radius: 12px; padding: 12px 20px; font-family: 'Zen Kaku Gothic New', sans-serif; font-weight: 700; letter-spacing: 0.06em; cursor: pointer; transition: all 0.22s; white-space: nowrap; flex-shrink: 0; box-shadow: 0 4px 12px rgba(14,160,230,0.28);">📄 報告書</button>
             </div>
             <form id="add-form" style="display: none;">
                 <div class="form-section">
@@ -545,6 +571,13 @@
                             </div>
                             <div id="f-photo-preview" class="photo-preview"></div>
                             <div id="f-upload-progress" class="upload-progress" style="display:none;"></div>
+                        </div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group full">
+                            <label>Before / After 写真（箇所ごと・行政報告用）</label>
+                            <div id="f-pairs"></div>
+                            <button type="button" class="pair-add-btn" onclick="addPairRow('f')">＋ Before/Afterの箇所を追加</button>
                         </div>
                     </div>
                     <div class="form-actions">
@@ -711,6 +744,13 @@
                     <div id="e-upload-progress" class="upload-progress" style="display:none;"></div>
                 </div>
             </div>
+            <div class="form-grid">
+                <div class="form-group full">
+                    <label>Before / After 写真（箇所ごと）</label>
+                    <div id="e-pairs"></div>
+                    <button type="button" class="pair-add-btn" onclick="addPairRow('e')">＋ Before/Afterの箇所を追加</button>
+                </div>
+            </div>
             <div class="form-actions">
                 <button class="btn btn-primary" onclick="saveEdit()">保存</button>
                 <button class="btn btn-secondary" onclick="closeEdit()">キャンセル</button>
@@ -738,6 +778,8 @@
         let pendingPhotos = [];
         let editPendingPhotos = [];
         let editExistingPhotos = [];
+        let pendingPairs = [];   // 追加フォームのBefore/After（{label, before:{data|url}, after:{data|url}}）
+        let editPairs = [];      // 編集モーダルのBefore/After
 
         // ==========================================
         // 活動回数オフセット（アプリ導入前の実績を加算）
@@ -1046,6 +1088,208 @@
                 : state.members.map(function(m) { return '<label class="checkbox-label"><input type="checkbox" value="' + m + '"> ' + displayName(m) + '</label>'; }).join('');
         }
 
+        // ==========================================
+        // BEFORE / AFTER PAIRS（箇所ごとの前後写真）
+        // ==========================================
+        function pairArr(prefix) { return prefix === 'f' ? pendingPairs : editPairs; }
+        function addPairRow(prefix) {
+            pairArr(prefix).push({ label: '', before: null, after: null });
+            renderPairRows(prefix);
+        }
+        function removePairRow(prefix, idx) {
+            pairArr(prefix).splice(idx, 1);
+            renderPairRows(prefix);
+        }
+        function setPairLabel(prefix, idx, val) { pairArr(prefix)[idx].label = val; }
+        function pairSrc(slot) { return slot ? (slot.data || slot.url) : null; }
+        function renderPairRows(prefix) {
+            var box = document.getElementById(prefix + '-pairs');
+            if (!box) return;
+            var arr = pairArr(prefix);
+            box.innerHTML = arr.map(function(p, i) {
+                function slotHtml(side, jp) {
+                    var src = pairSrc(p[side]);
+                    var inner = src
+                        ? '<span class="pair-badge ' + side + '">' + jp + '</span><img src="' + src + '">'
+                        : '<span class="pair-slot-label">' + jp + '写真<br>タップで選択</span>';
+                    return '<div class="pair-slot" onclick="pickPairPhoto(\'' + prefix + '\',' + i + ',\'' + side + '\')">' + inner + '</div>';
+                }
+                return '<div class="pair-row">' +
+                    '<div class="pair-row-head">' +
+                    '<input type="text" placeholder="箇所名（例: 公園入口の花壇）" value="' + (p.label || '').replace(/"/g, '&quot;') + '" oninput="setPairLabel(\'' + prefix + '\',' + i + ', this.value)">' +
+                    '<button type="button" class="pair-remove" onclick="removePairRow(\'' + prefix + '\',' + i + ')">✕</button></div>' +
+                    '<div class="pair-slots">' + slotHtml('before', 'Before') + '<span class="pair-arrow">➡</span>' + slotHtml('after', 'After') + '</div>' +
+                    '</div>';
+            }).join('');
+        }
+        function pickPairPhoto(prefix, idx, side) {
+            var inp = document.createElement('input');
+            inp.type = 'file'; inp.accept = 'image/*';
+            inp.onchange = async function() {
+                if (!inp.files || !inp.files[0]) return;
+                var base64 = await resizeImage(inp.files[0]);
+                pairArr(prefix)[idx][side] = { data: base64 };
+                renderPairRows(prefix);
+            };
+            inp.click();
+        }
+        // pairs内の新規写真(base64)をDriveへアップロードし、保存用の配列に整形して返す
+        async function uploadPairs(pairs, progressEl, btnEl) {
+            var jobs = [];
+            pairs.forEach(function(p, i) {
+                ['before', 'after'].forEach(function(side) {
+                    if (p[side] && p[side].data) jobs.push({ i: i, side: side });
+                });
+            });
+            for (var k = 0; k < jobs.length; k++) {
+                var j = jobs[k];
+                var msg = 'Before/After写真 (' + (k + 1) + '/' + jobs.length + ') アップロード中...';
+                if (progressEl) { progressEl.style.display = 'block'; progressEl.textContent = msg; }
+                if (btnEl) btnEl.textContent = msg;
+                try {
+                    var uploadId = 'pair_' + Date.now() + '_' + k;
+                    var url = await uploadImageToCloud(pairs[j.i][j.side].data, uploadId);
+                    pairs[j.i][j.side] = { url: url };
+                } catch (e) { showToast('Before/After写真のアップロードに失敗しました'); pairs[j.i][j.side] = null; }
+            }
+            return pairs
+                .map(function(p) {
+                    return { label: (p.label || '').trim(), before: p.before && p.before.url ? p.before.url : null, after: p.after && p.after.url ? p.after.url : null };
+                })
+                .filter(function(p) { return p.before || p.after; });
+        }
+
+        // ==========================================
+        // 行政報告書（Word文書）生成
+        // ==========================================
+        // GAS経由で写真をbase64取得（Code.gs未更新などで失敗したらnull→URL参照にフォールバック）
+        function fetchPhotoBase64(url) {
+            return new Promise(function(resolve) {
+                var cbName = 'pb64_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+                var done = false;
+                var scr = document.createElement('script');
+                function cleanup() { delete window[cbName]; if (scr.parentNode) scr.parentNode.removeChild(scr); }
+                var timer = setTimeout(function() { if (done) return; done = true; cleanup(); resolve(null); }, 20000);
+                window[cbName] = function(d) {
+                    if (done) return; done = true; clearTimeout(timer); cleanup();
+                    resolve(d && d.b64 ? 'data:image/jpeg;base64,' + d.b64 : null);
+                };
+                scr.onerror = function() { if (done) return; done = true; clearTimeout(timer); cleanup(); resolve(null); };
+                scr.src = GAS_URL + '?photo_b64=' + encodeURIComponent(url) + '&callback=' + cbName + '&t=' + Date.now();
+                document.head.appendChild(scr);
+            });
+        }
+
+        function toWareki(year) {
+            var r = year - 2018; // 2019 = 令和元年
+            return '令和' + (r === 1 ? '元' : r) + '年';
+        }
+
+        async function generateReport() {
+            var now = new Date();
+            var def = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+            var input = prompt('報告書の対象月を入力してください（例: ' + def + '）', def);
+            if (input === null) return;
+            var m = (input || def).trim().match(/^(\d{4})-(\d{1,2})$/);
+            if (!m) { showToast('形式が正しくありません（例: ' + def + '）'); return; }
+            var year = parseInt(m[1], 10), month = parseInt(m[2], 10);
+            var recs = state.records.filter(function(r) {
+                var d = new Date(r.date + 'T00:00:00');
+                return d.getFullYear() === year && d.getMonth() + 1 === month;
+            }).sort(function(a, b) { return new Date(a.date) - new Date(b.date); });
+            if (recs.length === 0) { showToast(year + '年' + month + '月の記録がありません'); return; }
+
+            var btn = document.getElementById('report-btn');
+            var orig = btn.textContent;
+            btn.disabled = true;
+
+            // 埋め込む画像URLを収集（Before/After全部＋通常写真は各記録4枚まで）
+            var urls = [];
+            recs.forEach(function(r) {
+                (r.pairs || []).forEach(function(p) { if (p.before) urls.push(p.before); if (p.after) urls.push(p.after); });
+                if (!r.pairs || r.pairs.length === 0) (r.photos || []).slice(0, 4).forEach(function(u) { urls.push(u); });
+            });
+            urls = urls.filter(function(u, i) { return urls.indexOf(u) === i; });
+
+            var imgMap = {}, embedded = 0;
+            for (var i = 0; i < urls.length; i++) {
+                btn.textContent = '写真取得中 ' + (i + 1) + '/' + urls.length;
+                var b64 = await fetchPhotoBase64(urls[i]);
+                imgMap[urls[i]] = b64;
+                if (b64) embedded++;
+            }
+
+            btn.textContent = '文書作成中...';
+            var html = buildReportHtml(recs, year, month, imgMap);
+            var blob = new Blob(['﻿', html], { type: 'application/msword' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'CleanVibes_活動報告書_' + year + '-' + String(month).padStart(2, '0') + '.doc';
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(function() { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+
+            btn.disabled = false;
+            btn.textContent = orig;
+            showToast(urls.length > 0 && embedded === 0
+                ? '報告書を作成しました（写真はWordが開く時に読み込みます）'
+                : '報告書を作成しました！');
+        }
+
+        function buildReportHtml(recs, year, month, imgMap) {
+            function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+            function img(url, w) {
+                if (!url) return '';
+                var src = imgMap[url] || url.replace('sz=w800', 'sz=w640');
+                return '<img src="' + src + '" width="' + w + '" style="width:' + w + 'px;">';
+            }
+            var totalNobe = recs.reduce(function(s, r) { return s + (r.members ? r.members.length : 0); }, 0);
+            var period = toWareki(year) + month + '月';
+
+            var body = '';
+            recs.forEach(function(r, idx) {
+                var d = new Date(r.date + 'T00:00:00');
+                var ds = year + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日';
+                body += '<h3 style="font-size:12pt;border-left:6pt solid #0d9488;padding-left:8px;margin:18pt 0 6pt;">' + (idx + 1) + '．' + ds + '　' + esc(r.place) + '</h3>';
+                body += '<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:10.5pt;">' +
+                    '<tr><td width="110" style="background:#f0f4f4;">実施日</td><td>' + ds + '</td></tr>' +
+                    '<tr><td style="background:#f0f4f4;">場所</td><td>' + esc(r.place) + '</td></tr>' +
+                    '<tr><td style="background:#f0f4f4;">作業内容</td><td>' + esc(r.work) + '</td></tr>' +
+                    '<tr><td style="background:#f0f4f4;">参加人数</td><td>' + (r.members ? r.members.length : 0) + '名</td></tr>' +
+                    (r.memo ? '<tr><td style="background:#f0f4f4;">特記事項</td><td>' + esc(r.memo) + '</td></tr>' : '') +
+                    '</table>';
+                (r.pairs || []).forEach(function(p) {
+                    body += '<p style="margin:10pt 0 4pt;font-weight:bold;font-size:10.5pt;">' + (p.label ? '【' + esc(p.label) + '】' : '【作業前後の状況】') + '</p>' +
+                        '<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;font-size:10pt;text-align:center;">' +
+                        '<tr><td width="260" style="background:#e8eef2;font-weight:bold;">Before（作業前）</td><td width="260" style="background:#e0f5f0;font-weight:bold;">After（作業後）</td></tr>' +
+                        '<tr><td>' + (p.before ? img(p.before, 240) : '―') + '</td><td>' + (p.after ? img(p.after, 240) : '―') + '</td></tr>' +
+                        '</table>';
+                });
+                if ((!r.pairs || r.pairs.length === 0) && r.photos && r.photos.length > 0) {
+                    body += '<p style="margin:10pt 0 4pt;font-weight:bold;font-size:10.5pt;">【活動の様子】</p><p>';
+                    r.photos.slice(0, 4).forEach(function(u) { body += img(u, 220) + '&nbsp;'; });
+                    body += '</p>';
+                }
+            });
+
+            return '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">' +
+                '<head><meta charset="utf-8"><title>美化活動実施報告書</title>' +
+                '<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->' +
+                '<style>@page Section1 { size:595.3pt 841.9pt; margin:56.7pt 45pt; } div.Section1 { page:Section1; } body { font-family:"游明朝","MS 明朝",serif; font-size:10.5pt; color:#111; } h1,h3 { font-family:"游ゴシック","MS ゴシック",sans-serif; }</style></head>' +
+                '<body><div class="Section1">' +
+                '<h1 style="text-align:center;font-size:16pt;letter-spacing:0.2em;margin:0 0 4pt;">美化活動実施報告書</h1>' +
+                '<p style="text-align:center;font-size:11pt;margin:0 0 14pt;">（' + period + '分）</p>' +
+                '<table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-size:10.5pt;">' +
+                '<tr><td width="130" style="background:#f0f4f4;">団体名</td><td>Clean Vibes（クリーンバイブス）　代表　大竹 圭</td></tr>' +
+                '<tr><td style="background:#f0f4f4;">報告対象期間</td><td>' + period + '（' + year + '年' + month + '月）</td></tr>' +
+                '<tr><td style="background:#f0f4f4;">活動回数</td><td>' + recs.length + '回</td></tr>' +
+                '<tr><td style="background:#f0f4f4;">延べ参加人数</td><td>' + totalNobe + '名（記録上）</td></tr>' +
+                '</table>' +
+                body +
+                '<p style="margin-top:22pt;text-align:right;font-size:10.5pt;">以上</p>' +
+                '</div></body></html>';
+        }
+
         async function addRecord() {
             var date = document.getElementById('f-date').value;
             var place = document.getElementById('f-place').value.trim();
@@ -1068,11 +1312,13 @@
                     catch(e) { showToast('写真' + (i + 1) + 'のアップロードに失敗しました'); }
                 }
             }
+            var cleanPairs = await uploadPairs(pendingPairs, progress, btn);
             btn.textContent = '保存中...';
             progress.textContent = 'データ保存中...';
 
             var record = { id: Date.now(), date: date, place: place, work: work, memo: memo, members: members };
             if (photoUrls.length > 0) record.photos = photoUrls;
+            if (cleanPairs.length > 0) record.pairs = cleanPairs;
             state.records.unshift(record);
             await saveToCloud();
             renderRecords();
@@ -1082,6 +1328,8 @@
             document.querySelectorAll('#member-checkboxes input').forEach(function(c) { c.checked = false; });
             pendingPhotos = [];
             document.getElementById('f-photo-preview').innerHTML = '';
+            pendingPairs = [];
+            renderPairRows('f');
             progress.style.display = 'none';
             btn.disabled = false;
             btn.textContent = '記録を追加';
@@ -1228,6 +1476,16 @@
                         var fullUrl = url.replace('sz=w800', 'sz=w1600');
                         return '<img src="' + url + '" onclick="openLightbox(\'' + fullUrl + '\')" loading="lazy">';
                       }).join('') + '</div>' : '';
+                var pairsHtml = (r.pairs && r.pairs.length > 0)
+                    ? '<div class="card-pairs">' + r.pairs.map(function(p) {
+                        function ph(url, side, jp) {
+                            if (!url) return '<div class="ph" style="display:flex;align-items:center;justify-content:center;height:110px;background:var(--paper-2);color:var(--gray-400);font-size:0.7rem;">' + jp + 'なし</div>';
+                            var full = url.replace('sz=w800', 'sz=w1600');
+                            return '<div class="ph"><span class="pair-badge ' + side + '">' + jp + '</span><img src="' + url + '" loading="lazy" onclick="openLightbox(\'' + full + '\')"></div>';
+                        }
+                        return '<div class="card-pair">' + (p.label ? '<div class="card-pair-label">📍 ' + p.label + '</div>' : '') +
+                            ph(p.before, 'before', 'Before') + '<span class="pair-arrow">➡</span>' + ph(p.after, 'after', 'After') + '</div>';
+                      }).join('') + '</div>' : '';
                 var adminBtns = isAdmin
                     ? '<div style="position:absolute;top:12px;right:12px;display:flex;gap:6px;"><button class="edit-btn" onclick="openEdit(' + r.id + ')" title="編集">✏️</button><button class="delete-btn" style="position:static;" onclick="deleteRecord(' + r.id + ')" title="削除">✕</button></div>' : '';
                 return '<div class="card">' + adminBtns +
@@ -1235,7 +1493,7 @@
                     '<div class="card-meta"><div>' + r.work + '</div>' +
                     (r.memo ? '<div style="color:var(--gray-400);font-size:0.8rem;margin-top:4px;">' + r.memo + '</div>' : '') +
                     '<div style="margin-top:6px">' + tags + '</div>' +
-                    photosHtml + '</div></div>';
+                    pairsHtml + photosHtml + '</div></div>';
             }).join('');
         }
 
@@ -1281,6 +1539,10 @@
                 : state.members.map(function(m) { return '<label class="checkbox-label"><input type="checkbox" value="' + m + '"' + (r.members.includes(m) ? ' checked' : '') + '> ' + displayName(m) + '</label>'; }).join('');
             editExistingPhotos = r.photos ? [...r.photos] : [];
             editPendingPhotos = [];
+            editPairs = (r.pairs || []).map(function(p) {
+                return { label: p.label || '', before: p.before ? { url: p.before } : null, after: p.after ? { url: p.after } : null };
+            });
+            renderPairRows('e');
             renderEditPhotoPreview();
             document.getElementById('e-upload-progress').style.display = 'none';
             document.getElementById('edit-modal').style.display = 'flex';
@@ -1308,10 +1570,12 @@
                 }
             }
             var allPhotos = editExistingPhotos.filter(function(p) { return p; }).concat(newPhotoUrls);
+            var cleanPairs = await uploadPairs(editPairs, progress, null);
             var idx = state.records.findIndex(function(r) { return r.id === editingId; });
             if (idx !== -1) {
-                state.records[idx] = Object.assign({}, state.records[idx], { date: date, place: place, work: work, memo: memo, members: members, photos: allPhotos.length > 0 ? allPhotos : undefined });
+                state.records[idx] = Object.assign({}, state.records[idx], { date: date, place: place, work: work, memo: memo, members: members, photos: allPhotos.length > 0 ? allPhotos : undefined, pairs: cleanPairs.length > 0 ? cleanPairs : undefined });
                 if (allPhotos.length === 0) delete state.records[idx].photos;
+                if (cleanPairs.length === 0) delete state.records[idx].pairs;
                 progress.textContent = '保存中...';
                 await saveToCloud();
                 renderRecords();

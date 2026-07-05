@@ -5,6 +5,11 @@ function doGet(e) {
       return handleCheckUpload(e);
     }
 
+    // 写真をbase64で返す（行政報告書のWord埋め込み用）
+    if (e.parameter.photo_b64) {
+      return handlePhotoBase64(e);
+    }
+
     // 通常のデータ取得
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Clean Vibes');
     var data = sheet.getRange('A1').getValue();
@@ -57,6 +62,28 @@ function handleCheckUpload(e) {
   }
   return ContentService.createTextOutput(result)
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// 報告書用: Drive写真をbase64で返す（JSONP）
+function handlePhotoBase64(e) {
+  var callback = e.parameter.callback;
+  var out;
+  try {
+    var url = e.parameter.photo_b64;
+    var resp = UrlFetchApp.fetch(url, { muteHttpExceptions: true, followRedirects: true });
+    if (resp.getResponseCode() === 200) {
+      out = JSON.stringify({ b64: Utilities.base64Encode(resp.getContent()) });
+    } else {
+      out = JSON.stringify({ b64: null });
+    }
+  } catch (err) {
+    out = JSON.stringify({ b64: null });
+  }
+  if (callback) {
+    return ContentService.createTextOutput(callback + '(' + out + ')')
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return ContentService.createTextOutput(out).setMimeType(ContentService.MimeType.JSON);
 }
 
 function doPost(e) {
