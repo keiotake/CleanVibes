@@ -2288,6 +2288,9 @@
             try {
                 var params = new URLSearchParams();
                 params.append('action', 'report_draft');
+                // 安全策: 旧GAS(report_draft未対応)に届いた場合、保存分岐でA1が上書きされても
+                // 現在のstateを再保存するだけで済むよう data を同梱しておく（データ消失防止）
+                params.append('data', JSON.stringify(state));
                 params.append('to', toaddr);
                 params.append('cc', cc);
                 params.append('subject', subject);
