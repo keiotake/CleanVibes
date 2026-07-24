@@ -94,6 +94,11 @@ function doPost(e) {
       return handleImageUpload(e);
     }
 
+    // 行政報告メールのGmail下書きを作成
+    if (action === 'report_draft') {
+      return handleReportDraft(e);
+    }
+
     // 通常のデータ保存
     var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Clean Vibes');
     var body = e.parameter.data || e.postData.contents;
@@ -135,6 +140,39 @@ function handleImageUpload(e) {
 
   return ContentService.createTextOutput('ok')
     .setMimeType(ContentService.MimeType.TEXT);
+}
+
+// ==========================================
+// 行政報告メール: Gmail下書きを作成（Before/After写真を添付）
+// ==========================================
+function handleReportDraft(e) {
+  try {
+    var to = e.parameter.to || '';
+    var cc = e.parameter.cc || '';
+    var subject = e.parameter.subject || 'CleanVibes 活動報告';
+    var body = e.parameter.body || '';
+    var photos = [];
+    try { photos = JSON.parse(e.parameter.photos || '[]'); } catch (pe) { photos = []; }
+
+    var attachments = [];
+    for (var i = 0; i < photos.length; i++) {
+      try {
+        var resp = UrlFetchApp.fetch(photos[i].url, { muteHttpExceptions: true, followRedirects: true });
+        if (resp.getResponseCode() === 200) {
+          attachments.push(resp.getBlob().setName(photos[i].name || ('photo_' + (i + 1) + '.jpg')));
+        }
+      } catch (ie) { /* skip this photo */ }
+    }
+
+    var opts = { attachments: attachments, name: 'CleanVibes 大竹' };
+    if (cc) opts.cc = cc;
+    var draft = GmailApp.createDraft(to, subject, body, opts);
+    return ContentService.createTextOutput(JSON.stringify({ ok: true, id: draft.getId(), attached: attachments.length }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ ok: false, error: String(err) }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
 // ==========================================
