@@ -546,7 +546,6 @@
                 <button id="add-toggle" onclick="toggleAddForm()" class="add-toggle-btn">+ 記録を追加</button>
                 <button id="sort-btn" onclick="toggleSort()" style="background: var(--ink); color: #fff; border: none; border-radius: 12px; padding: 12px 20px; font-family: 'Zen Kaku Gothic New', sans-serif; font-weight: 700; letter-spacing: 0.08em; cursor: pointer; transition: all 0.22s; white-space: nowrap; flex-shrink: 0;">新しい順</button>
                 <button id="report-btn" onclick="generateReport()" style="background: var(--gradient-vivid); color: #fff; border: none; border-radius: 12px; padding: 12px 20px; font-family: 'Zen Kaku Gothic New', sans-serif; font-weight: 700; letter-spacing: 0.06em; cursor: pointer; transition: all 0.22s; white-space: nowrap; flex-shrink: 0; box-shadow: 0 4px 12px rgba(14,160,230,0.28);">📄 報告書</button>
-                <button id="mail-report-btn" onclick="openReportMail()" style="background: #0d9488; color: #fff; border: none; border-radius: 12px; padding: 12px 20px; font-family: 'Zen Kaku Gothic New', sans-serif; font-weight: 700; letter-spacing: 0.06em; cursor: pointer; transition: all 0.22s; white-space: nowrap; flex-shrink: 0; box-shadow: 0 4px 12px rgba(13,148,136,0.28);">✉️ 報告メール</button>
             </div>
             <form id="add-form" style="display: none;">
                 <div class="form-section">
@@ -563,11 +562,6 @@
                     </div>
                     <div class="form-grid">
                         <div class="form-group full"><label>その他（メモ）</label><textarea id="f-memo" placeholder="特記事項があればここに記入"></textarea></div>
-                    </div>
-                    <div class="form-grid">
-                        <div class="form-group full"><label>可燃物の回収場所（行政報告用）</label><input id="f-combustible" type="text" placeholder="例: 伊豆伊東高校スロープ手前"></div>
-                        <div class="form-group full"><label>支給材料の使用量（行政報告用）</label><input id="f-material" type="text" placeholder="例: マサファルト3袋半 使用"></div>
-                        <div class="form-group full"><label>防草の工程・材料（行政報告用）</label><textarea id="f-weeding" placeholder="例: モルタル／散水パッチ／固まる砂による防草。物理除去→焼却→発芽抑制→アルカリ水散布"></textarea></div>
                     </div>
                     <div class="form-grid">
                         <div class="form-group full">
@@ -738,11 +732,6 @@
             </div>
             <div class="form-grid">
                 <div class="form-group full"><label>その他（メモ）</label><textarea id="e-memo"></textarea></div>
-            </div>
-            <div class="form-grid">
-                <div class="form-group full"><label>可燃物の回収場所（行政報告用）</label><input id="e-combustible" type="text" placeholder="例: 伊豆伊東高校スロープ手前"></div>
-                <div class="form-group full"><label>支給材料の使用量（行政報告用）</label><input id="e-material" type="text" placeholder="例: マサファルト3袋半 使用"></div>
-                <div class="form-group full"><label>防草の工程・材料（行政報告用）</label><textarea id="e-weeding"></textarea></div>
             </div>
             <div class="form-grid">
                 <div class="form-group full">
@@ -1306,9 +1295,6 @@
             var place = document.getElementById('f-place').value.trim();
             var work = document.getElementById('f-work').value.trim();
             var memo = document.getElementById('f-memo').value.trim();
-            var combustible = document.getElementById('f-combustible').value.trim();
-            var material = document.getElementById('f-material').value.trim();
-            var weeding = document.getElementById('f-weeding').value.trim();
             var members = [...document.querySelectorAll('#member-checkboxes input:checked')].map(function(c) { return c.value; });
             if (!date || !place || !work || members.length === 0) { showToast('日時・場所・メンバー・作業内容は必須です'); return; }
 
@@ -1333,15 +1319,12 @@
             var record = { id: Date.now(), date: date, place: place, work: work, memo: memo, members: members };
             if (photoUrls.length > 0) record.photos = photoUrls;
             if (cleanPairs.length > 0) record.pairs = cleanPairs;
-            if (combustible) record.combustible = combustible;
-            if (material) record.material = material;
-            if (weeding) record.weeding = weeding;
             state.records.unshift(record);
             await saveToCloud();
             renderRecords();
             updateHeaderCount();
 
-            ['f-date', 'f-place', 'f-work', 'f-memo', 'f-combustible', 'f-material', 'f-weeding'].forEach(function(id) { document.getElementById(id).value = ''; });
+            ['f-date', 'f-place', 'f-work', 'f-memo'].forEach(function(id) { document.getElementById(id).value = ''; });
             document.querySelectorAll('#member-checkboxes input').forEach(function(c) { c.checked = false; });
             pendingPhotos = [];
             document.getElementById('f-photo-preview').innerHTML = '';
@@ -1550,9 +1533,6 @@
             document.getElementById('e-place').value = r.place;
             document.getElementById('e-work').value = r.work;
             document.getElementById('e-memo').value = r.memo || '';
-            document.getElementById('e-combustible').value = r.combustible || '';
-            document.getElementById('e-material').value = r.material || '';
-            document.getElementById('e-weeding').value = r.weeding || '';
             var c = document.getElementById('e-member-checkboxes');
             c.innerHTML = state.members.length === 0
                 ? '<span style="color:var(--gray-400);font-size:.85rem;">メンバーが登録されていません</span>'
@@ -1575,9 +1555,6 @@
             var place = document.getElementById('e-place').value.trim();
             var work = document.getElementById('e-work').value.trim();
             var memo = document.getElementById('e-memo').value.trim();
-            var combustible = document.getElementById('e-combustible').value.trim();
-            var material = document.getElementById('e-material').value.trim();
-            var weeding = document.getElementById('e-weeding').value.trim();
             var members = [...document.querySelectorAll('#e-member-checkboxes input:checked')].map(function(c) { return c.value; });
             if (!date || !place || !work || members.length === 0) { showToast('日付・場所・メンバー・作業内容は必須です'); return; }
 
@@ -1596,12 +1573,9 @@
             var cleanPairs = await uploadPairs(editPairs, progress, null);
             var idx = state.records.findIndex(function(r) { return r.id === editingId; });
             if (idx !== -1) {
-                state.records[idx] = Object.assign({}, state.records[idx], { date: date, place: place, work: work, memo: memo, members: members, combustible: combustible, material: material, weeding: weeding, photos: allPhotos.length > 0 ? allPhotos : undefined, pairs: cleanPairs.length > 0 ? cleanPairs : undefined });
+                state.records[idx] = Object.assign({}, state.records[idx], { date: date, place: place, work: work, memo: memo, members: members, photos: allPhotos.length > 0 ? allPhotos : undefined, pairs: cleanPairs.length > 0 ? cleanPairs : undefined });
                 if (allPhotos.length === 0) delete state.records[idx].photos;
                 if (cleanPairs.length === 0) delete state.records[idx].pairs;
-                if (!combustible) delete state.records[idx].combustible;
-                if (!material) delete state.records[idx].material;
-                if (!weeding) delete state.records[idx].weeding;
                 progress.textContent = '保存中...';
                 await saveToCloud();
                 renderRecords();
@@ -2182,236 +2156,6 @@
         }, 30000);
 
         loadFromCloud();
-        // ==========================================
-        // 行政報告メール（Gmail下書き）＋ パワポ生成
-        // ==========================================
-        var REPORT_CFG_KEY = 'cv_report_cfg';
-        function getReportCfg() {
-            var d = {
-                to: '',
-                cc: '',
-                greeting: 'いつも大変お世話になっております。\nCleanVibesの大竹でございます。\n\n掲題の件、以下の通り活動を実施いたしましたので、ご確認くださいませ。',
-                closing: '可燃物につきましては、ガラ袋・土嚢袋に詰め、打合せ通りの場所に置かせていただいております。\n\n引き続きよろしくお願いいたします。'
-            };
-            try { return Object.assign(d, JSON.parse(localStorage.getItem(REPORT_CFG_KEY) || '{}')); } catch (e) { return d; }
-        }
-        function saveReportCfg(c) { try { localStorage.setItem(REPORT_CFG_KEY, JSON.stringify(c)); } catch (e) {} }
-
-        function fmtMD(dateStr) {
-            var d = new Date((dateStr || '').split('T')[0] + 'T00:00:00');
-            return (d.getMonth() + 1) + '月' + d.getDate() + '日';
-        }
-        function recordsInRange(from, to) {
-            return state.records.filter(function (r) {
-                var ds = (r.date || '').split('T')[0];
-                return ds && ds >= from && ds <= to;
-            }).sort(function (a, b) { return new Date(a.date) - new Date(b.date); });
-        }
-
-        function openReportMail() {
-            if (!checkAdmin()) return;
-            var cfg = getReportCfg();
-            var now = new Date();
-            var toStr = now.toISOString().slice(0, 10);
-            var fromStr = new Date(now.getTime() - 6 * 86400000).toISOString().slice(0, 10);
-            document.getElementById('rm-from').value = fromStr;
-            document.getElementById('rm-to').value = toStr;
-            document.getElementById('rm-toaddr').value = cfg.to;
-            document.getElementById('rm-cc').value = cfg.cc;
-            document.getElementById('rm-next').value = '';
-            document.getElementById('rm-subject').value = '';
-            document.getElementById('rm-modal').style.display = 'flex';
-            buildReportMail();
-        }
-        function closeReportMail() { document.getElementById('rm-modal').style.display = 'none'; }
-
-        function buildReportMail() {
-            var cfg = getReportCfg();
-            var from = document.getElementById('rm-from').value;
-            var to = document.getElementById('rm-to').value;
-            if (!from || !to) return;
-            var nextWeek = document.getElementById('rm-next').value.trim();
-            var recs = recordsInRange(from, to);
-            var subjEl = document.getElementById('rm-subject');
-            var periodLabel = fmtMD(from) + '〜' + fmtMD(to);
-            if (!subjEl.value) subjEl.value = 'CleanVibes 活動報告（' + periodLabel + '）';
-
-            var lines = [cfg.greeting, ''];
-            if (recs.length === 0) lines.push('（この期間の活動記録がありません）');
-            recs.forEach(function (r) {
-                lines.push('＊ ' + fmtMD(r.date) + '（' + (r.place || '') + '）');
-                lines.push('→ ' + (r.work || ''));
-                lines.push('（参加者 ' + (r.members ? r.members.length : 0) + '名）');
-                if (r.material) lines.push('　支給材料の使用量：' + r.material);
-                if (r.combustible) lines.push('　可燃物の回収場所：' + r.combustible);
-                if (r.weeding) { lines.push('【防草方法・材料】'); lines.push(r.weeding); }
-                lines.push('');
-            });
-            if (nextWeek) { lines.push('来週は' + nextWeek + 'の予定です。引き続きよろしくお願いいたします。'); lines.push(''); }
-            lines.push(cfg.closing);
-            lines.push('');
-            lines.push('※ 作業日・参加人数・作業内容・可燃物の回収場所・ビフォーアフター写真を添付しております。');
-            document.getElementById('rm-body').value = lines.join('\n');
-
-            var pairCount = 0;
-            recs.forEach(function (r) { (r.pairs || []).forEach(function (p) { if (p.before) pairCount++; if (p.after) pairCount++; }); });
-            document.getElementById('rm-info').textContent = '対象記録 ' + recs.length + '件 / 添付写真 ' + pairCount + '枚（Before/After）';
-        }
-
-        function collectReportPhotos(recs) {
-            var photos = [];
-            recs.forEach(function (r) {
-                var md = fmtMD(r.date);
-                (r.pairs || []).forEach(function (p, i) {
-                    var lbl = (p.label || ('箇所' + (i + 1))).replace(/[\\\/:*?"<>|\s]/g, '');
-                    if (p.before) photos.push({ name: md + '_' + lbl + '_Before.jpg', url: p.before });
-                    if (p.after) photos.push({ name: md + '_' + lbl + '_After.jpg', url: p.after });
-                });
-            });
-            return photos;
-        }
-
-        async function createReportDraft() {
-            var toaddr = document.getElementById('rm-toaddr').value.trim();
-            if (!toaddr) { showToast('宛先メールアドレスを入力してください'); return; }
-            var cc = document.getElementById('rm-cc').value.trim();
-            var subject = document.getElementById('rm-subject').value.trim() || 'CleanVibes 活動報告';
-            var body = document.getElementById('rm-body').value;
-            var from = document.getElementById('rm-from').value, to = document.getElementById('rm-to').value;
-            var recs = recordsInRange(from, to);
-            var photos = collectReportPhotos(recs);
-
-            var cfg = getReportCfg(); cfg.to = toaddr; cfg.cc = cc; saveReportCfg(cfg);
-
-            var btn = document.getElementById('rm-draft-btn');
-            var orig = btn.textContent; btn.disabled = true; btn.textContent = '下書き作成中...';
-            try {
-                var params = new URLSearchParams();
-                params.append('action', 'report_draft');
-                // 安全策: 旧GAS(report_draft未対応)に届いた場合、保存分岐でA1が上書きされても
-                // 現在のstateを再保存するだけで済むよう data を同梱しておく（データ消失防止）
-                params.append('data', JSON.stringify(state));
-                params.append('to', toaddr);
-                params.append('cc', cc);
-                params.append('subject', subject);
-                params.append('body', body);
-                params.append('photos', JSON.stringify(photos));
-                await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
-                showToast('Gmailに下書きを作成しました（Gmailの「下書き」をご確認ください）');
-            } catch (e) {
-                showToast('下書きの作成に失敗しました');
-            }
-            btn.disabled = false; btn.textContent = orig;
-        }
-
-        function loadPptx() {
-            return new Promise(function (resolve, reject) {
-                if (window.PptxGenJS) return resolve();
-                var s = document.createElement('script');
-                s.src = 'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js';
-                s.onload = function () { resolve(); };
-                s.onerror = function () { reject(new Error('PptxGenJSの読み込みに失敗しました')); };
-                document.head.appendChild(s);
-            });
-        }
-
-        async function generateReportPptx() {
-            var from = document.getElementById('rm-from').value, to = document.getElementById('rm-to').value;
-            if (!from || !to) { showToast('期間を指定してください'); return; }
-            var recs = recordsInRange(from, to);
-            if (recs.length === 0) { showToast('この期間の記録がありません'); return; }
-            var btn = document.getElementById('rm-pptx-btn');
-            var orig = btn.textContent; btn.disabled = true;
-            try {
-                btn.textContent = '準備中...';
-                await loadPptx();
-
-                var imgUrls = [];
-                recs.forEach(function (r) { (r.pairs || []).forEach(function (p) { if (p.before) imgUrls.push(p.before); if (p.after) imgUrls.push(p.after); }); });
-                imgUrls = imgUrls.filter(function (u, i) { return imgUrls.indexOf(u) === i; });
-                var imgMap = {};
-                for (var i = 0; i < imgUrls.length; i++) {
-                    btn.textContent = '写真取得中 ' + (i + 1) + '/' + imgUrls.length;
-                    imgMap[imgUrls[i]] = await fetchPhotoBase64(imgUrls[i]);
-                }
-
-                btn.textContent = 'スライド作成中...';
-                var pptx = new PptxGenJS();
-                pptx.defineLayout({ name: 'CVA4', width: 11.69, height: 8.27 });
-                pptx.layout = 'CVA4';
-                var TEAL = '0D9488', INK = '1F2937';
-
-                var s0 = pptx.addSlide();
-                s0.background = { color: 'F0F4F4' };
-                s0.addText('CleanVibes 活動報告', { x: 0.6, y: 2.6, w: 10.5, h: 1.0, fontSize: 40, bold: true, color: TEAL, align: 'center' });
-                s0.addText(fmtMD(from) + ' 〜 ' + fmtMD(to), { x: 0.6, y: 3.8, w: 10.5, h: 0.6, fontSize: 22, color: INK, align: 'center' });
-                s0.addText('Clean Vibes（クリーンバイブス）　代表　大竹 圭', { x: 0.6, y: 6.9, w: 10.5, h: 0.5, fontSize: 14, color: '555555', align: 'center' });
-
-                recs.forEach(function (r) {
-                    var ds = fmtMD(r.date);
-                    var s = pptx.addSlide();
-                    s.addText(ds + '　' + (r.place || ''), { x: 0.5, y: 0.4, w: 10.7, h: 0.8, fontSize: 26, bold: true, color: TEAL });
-                    var info = '作業内容：' + (r.work || '') + '\n参加人数：' + (r.members ? r.members.length : 0) + '名';
-                    if (r.material) info += '\n支給材料の使用量：' + r.material;
-                    if (r.combustible) info += '\n可燃物の回収場所：' + r.combustible;
-                    if (r.weeding) info += '\n防草の工程・材料：' + r.weeding;
-                    s.addText(info, { x: 0.6, y: 1.5, w: 10.5, h: 5.5, fontSize: 16, color: INK, valign: 'top' });
-
-                    (r.pairs || []).forEach(function (p) {
-                        var ps = pptx.addSlide();
-                        ps.addText(ds + '　' + (p.label || 'Before / After'), { x: 0.5, y: 0.3, w: 10.7, h: 0.7, fontSize: 22, bold: true, color: TEAL });
-                        ps.addText('Before', { x: 0.6, y: 1.05, w: 5.2, h: 0.4, fontSize: 14, bold: true, align: 'center', color: '555555' });
-                        ps.addText('After', { x: 5.9, y: 1.05, w: 5.2, h: 0.4, fontSize: 14, bold: true, align: 'center', color: TEAL });
-                        if (p.before && imgMap[p.before]) ps.addImage({ data: imgMap[p.before], x: 0.6, y: 1.55, w: 5.2, h: 5.6, sizing: { type: 'contain', w: 5.2, h: 5.6 } });
-                        if (p.after && imgMap[p.after]) ps.addImage({ data: imgMap[p.after], x: 5.9, y: 1.55, w: 5.2, h: 5.6, sizing: { type: 'contain', w: 5.2, h: 5.6 } });
-                    });
-                });
-
-                var totalNobe = recs.reduce(function (a, r) { return a + (r.members ? r.members.length : 0); }, 0);
-                var sm = pptx.addSlide();
-                sm.addText('活動サマリー', { x: 0.5, y: 0.5, w: 10.7, h: 0.8, fontSize: 26, bold: true, color: TEAL });
-                sm.addText('活動日数：' + recs.length + '日\n延べ参加人数：' + totalNobe + '名', { x: 0.6, y: 1.6, w: 10.5, h: 2.0, fontSize: 18, color: INK, valign: 'top' });
-
-                await pptx.writeFile({ fileName: 'CleanVibes_活動報告_' + from + '_' + to + '.pptx' });
-                showToast('パワポを作成しました！');
-            } catch (e) {
-                showToast('パワポ作成に失敗しました: ' + (e && e.message ? e.message : e));
-            }
-            btn.disabled = false; btn.textContent = orig;
-        }
     </script>
-
-    <!-- 行政報告メール／パワポ 作成モーダル -->
-    <div id="rm-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:flex-start;justify-content:center;overflow:auto;padding:20px;">
-        <div class="modal-content" style="max-width:640px;width:100%;">
-            <div class="form-title" style="margin-bottom:16px;">行政報告メール／パワポを作成</div>
-            <div class="form-grid">
-                <div class="form-group"><label>期間（開始）</label><input id="rm-from" type="date" onchange="buildReportMail()"></div>
-                <div class="form-group"><label>期間（終了）</label><input id="rm-to" type="date" onchange="buildReportMail()"></div>
-            </div>
-            <div class="form-grid">
-                <div class="form-group full"><label>宛先メールアドレス（To）</label><input id="rm-toaddr" type="text" placeholder="例: kensetsu@city.ito.shizuoka.jp"></div>
-            </div>
-            <div class="form-grid">
-                <div class="form-group full"><label>CC（任意・カンマ区切り）</label><input id="rm-cc" type="text" placeholder=""></div>
-            </div>
-            <div class="form-grid">
-                <div class="form-group full"><label>件名</label><input id="rm-subject" type="text"></div>
-            </div>
-            <div class="form-grid">
-                <div class="form-group full"><label>来週の予定（任意）</label><input id="rm-next" type="text" placeholder="例: さくらの里周辺" oninput="buildReportMail()"></div>
-            </div>
-            <div class="form-grid">
-                <div class="form-group full"><label>本文（自動生成・編集できます）</label><textarea id="rm-body" style="min-height:220px;font-family:monospace;font-size:.82rem;line-height:1.5;"></textarea></div>
-            </div>
-            <div id="rm-info" style="font-size:.8rem;color:var(--gray-400);margin-bottom:10px;"></div>
-            <div class="form-actions" style="flex-wrap:wrap;gap:8px;">
-                <button type="button" class="btn btn-secondary" onclick="buildReportMail()">文面を作り直す</button>
-                <button id="rm-draft-btn" type="button" class="btn btn-primary" onclick="createReportDraft()">✉️ Gmail下書きを作成</button>
-                <button id="rm-pptx-btn" type="button" class="btn btn-primary" style="background:var(--ink);" onclick="generateReportPptx()">📊 パワポをDL</button>
-                <button type="button" class="btn btn-secondary" onclick="closeReportMail()">閉じる</button>
-            </div>
-        </div>
-    </div>
 </body>
 </html>
