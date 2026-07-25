@@ -564,6 +564,11 @@
                         <div class="form-group full"><label>その他（メモ）</label><textarea id="f-memo" placeholder="特記事項があればここに記入"></textarea></div>
                     </div>
                     <div class="form-grid">
+                        <div class="form-group full"><label>可燃物の回収場所（行政報告用）</label><input id="f-combustible" type="text" placeholder="例: 伊豆伊東高校スロープ手前"></div>
+                        <div class="form-group full"><label>支給材料の使用量（行政報告用）</label><input id="f-material" type="text" placeholder="例: マサファルト3袋半 使用"></div>
+                        <div class="form-group full"><label>防草の工程・材料（行政報告用）</label><textarea id="f-weeding" placeholder="例: モルタル／散水パッチ／固まる砂による防草。物理除去→焼却→発芽抑制→アルカリ水散布"></textarea></div>
+                    </div>
+                    <div class="form-grid">
                         <div class="form-group full">
                             <label>写真（最大5枚）</label>
                             <div class="photo-input-area">
@@ -732,6 +737,11 @@
             </div>
             <div class="form-grid">
                 <div class="form-group full"><label>その他（メモ）</label><textarea id="e-memo"></textarea></div>
+            </div>
+            <div class="form-grid">
+                <div class="form-group full"><label>可燃物の回収場所（行政報告用）</label><input id="e-combustible" type="text" placeholder="例: 伊豆伊東高校スロープ手前"></div>
+                <div class="form-group full"><label>支給材料の使用量（行政報告用）</label><input id="e-material" type="text" placeholder="例: マサファルト3袋半 使用"></div>
+                <div class="form-group full"><label>防草の工程・材料（行政報告用）</label><textarea id="e-weeding"></textarea></div>
             </div>
             <div class="form-grid">
                 <div class="form-group full">
@@ -1321,6 +1331,9 @@
             var place = document.getElementById('f-place').value.trim();
             var work = document.getElementById('f-work').value.trim();
             var memo = document.getElementById('f-memo').value.trim();
+            var combustible = document.getElementById('f-combustible').value.trim();
+            var material = document.getElementById('f-material').value.trim();
+            var weeding = document.getElementById('f-weeding').value.trim();
             var members = [...document.querySelectorAll('#member-checkboxes input:checked')].map(function(c) { return c.value; });
             if (!date || !place || !work || members.length === 0) { showToast('日時・場所・メンバー・作業内容は必須です'); return; }
 
@@ -1334,12 +1347,15 @@
             var totalImgs = photosToSend.length + pairImgCount;
 
             var record = { id: Date.now(), date: date, place: place, work: work, memo: memo, members: members };
+            if (combustible) record.combustible = combustible;
+            if (material) record.material = material;
+            if (weeding) record.weeding = weeding;
             state.records.unshift(record);
             saveToCloud();
             renderRecords();
             updateHeaderCount();
 
-            ['f-date', 'f-place', 'f-work', 'f-memo'].forEach(function(id) { document.getElementById(id).value = ''; });
+            ['f-date', 'f-place', 'f-work', 'f-memo', 'f-combustible', 'f-material', 'f-weeding'].forEach(function(id) { document.getElementById(id).value = ''; });
             document.querySelectorAll('#member-checkboxes input').forEach(function(c) { c.checked = false; });
             pendingPhotos = [];
             document.getElementById('f-photo-preview').innerHTML = '';
@@ -1570,6 +1586,9 @@
             document.getElementById('e-place').value = r.place;
             document.getElementById('e-work').value = r.work;
             document.getElementById('e-memo').value = r.memo || '';
+            document.getElementById('e-combustible').value = r.combustible || '';
+            document.getElementById('e-material').value = r.material || '';
+            document.getElementById('e-weeding').value = r.weeding || '';
             var c = document.getElementById('e-member-checkboxes');
             c.innerHTML = state.members.length === 0
                 ? '<span style="color:var(--gray-400);font-size:.85rem;">メンバーが登録されていません</span>'
@@ -1592,6 +1611,9 @@
             var place = document.getElementById('e-place').value.trim();
             var work = document.getElementById('e-work').value.trim();
             var memo = document.getElementById('e-memo').value.trim();
+            var combustible = document.getElementById('e-combustible').value.trim();
+            var material = document.getElementById('e-material').value.trim();
+            var weeding = document.getElementById('e-weeding').value.trim();
             var members = [...document.querySelectorAll('#e-member-checkboxes input:checked')].map(function(c) { return c.value; });
             if (!date || !place || !work || members.length === 0) { showToast('日付・場所・メンバー・作業内容は必須です'); return; }
 
@@ -1614,9 +1636,12 @@
             var cleanPairs = await uploadPairs(editPairs, progress, null);
             var idx = state.records.findIndex(function(r) { return r.id === editingId; });
             if (idx !== -1) {
-                state.records[idx] = Object.assign({}, state.records[idx], { date: date, place: place, work: work, memo: memo, members: members, photos: allPhotos.length > 0 ? allPhotos : undefined, pairs: cleanPairs.length > 0 ? cleanPairs : undefined });
+                state.records[idx] = Object.assign({}, state.records[idx], { date: date, place: place, work: work, memo: memo, members: members, combustible: combustible, material: material, weeding: weeding, photos: allPhotos.length > 0 ? allPhotos : undefined, pairs: cleanPairs.length > 0 ? cleanPairs : undefined });
                 if (allPhotos.length === 0) delete state.records[idx].photos;
                 if (cleanPairs.length === 0) delete state.records[idx].pairs;
+                if (!combustible) delete state.records[idx].combustible;
+                if (!material) delete state.records[idx].material;
+                if (!weeding) delete state.records[idx].weeding;
                 progress.textContent = '保存中...';
                 await saveToCloud();
                 renderRecords();
