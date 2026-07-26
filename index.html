@@ -564,8 +564,8 @@
                         <div class="form-group full"><label>その他（メモ）</label><textarea id="f-memo" placeholder="特記事項があればここに記入"></textarea></div>
                     </div>
                     <div class="form-grid">
-                        <div class="form-group full"><label>可燃物の回収場所（行政報告用）</label><input id="f-combustible" type="text" placeholder="例: 伊豆伊東高校スロープ手前"></div>
-                        <div class="form-group full"><label>土砂の回収場所（行政報告用）</label><input id="f-soil" type="text" placeholder="例: 〇〇交差点脇に土嚢袋で仮置き"></div>
+                        <div class="form-group full"><label>可燃物の回収場所（行政報告用）</label><input id="f-combustible" type="text" list="dl-combustible" placeholder="例: 伊豆伊東高校スロープ手前"></div>
+                        <div class="form-group full"><label>土砂の回収場所（行政報告用）</label><input id="f-soil" type="text" list="dl-soil" placeholder="例: 〇〇交差点脇に土嚢袋で仮置き"></div>
                         <div class="form-group full"><label>支給材料の使用量（行政報告用）</label><input id="f-material" type="text" placeholder="例: マサファルト3袋半 使用"></div>
                         <div class="form-group full"><label>防草の工程・材料（行政報告用）</label><textarea id="f-weeding" placeholder="例: モルタル／散水パッチ／固まる砂による防草。物理除去→焼却→発芽抑制→アルカリ水散布"></textarea></div>
                     </div>
@@ -740,8 +740,8 @@
                 <div class="form-group full"><label>その他（メモ）</label><textarea id="e-memo"></textarea></div>
             </div>
             <div class="form-grid">
-                <div class="form-group full"><label>可燃物の回収場所（行政報告用）</label><input id="e-combustible" type="text" placeholder="例: 伊豆伊東高校スロープ手前"></div>
-                <div class="form-group full"><label>土砂の回収場所（行政報告用）</label><input id="e-soil" type="text" placeholder="例: 〇〇交差点脇に土嚢袋で仮置き"></div>
+                <div class="form-group full"><label>可燃物の回収場所（行政報告用）</label><input id="e-combustible" type="text" list="dl-combustible" placeholder="例: 伊豆伊東高校スロープ手前"></div>
+                <div class="form-group full"><label>土砂の回収場所（行政報告用）</label><input id="e-soil" type="text" list="dl-soil" placeholder="例: 〇〇交差点脇に土嚢袋で仮置き"></div>
                 <div class="form-group full"><label>支給材料の使用量（行政報告用）</label><input id="e-material" type="text" placeholder="例: マサファルト3袋半 使用"></div>
                 <div class="form-group full"><label>防草の工程・材料（行政報告用）</label><textarea id="e-weeding"></textarea></div>
             </div>
@@ -1355,10 +1355,9 @@
             if (material) record.material = material;
             if (weeding) record.weeding = weeding;
             state.records.unshift(record);
-            saveToCloud();
-            renderRecords();
-            updateHeaderCount();
 
+            // 押した瞬間に画面を返す：先にフォームを閉じてトーストを出し、
+            // 重い一覧再描画とクラウド保存は直後のタイミングに回す
             ['f-date', 'f-place', 'f-work', 'f-memo', 'f-combustible', 'f-soil', 'f-material', 'f-weeding'].forEach(function(id) { document.getElementById(id).value = ''; });
             document.querySelectorAll('#member-checkboxes input').forEach(function(c) { c.checked = false; });
             pendingPhotos = [];
@@ -1367,6 +1366,7 @@
             renderPairRows('f');
             toggleAddForm();
             showToast(totalImgs > 0 ? '記録を追加しました！写真' + totalImgs + '枚は裏で送信中です' : '記録を追加しました！');
+            setTimeout(function() { renderRecords(); updateHeaderCount(); saveToCloud(); }, 0);
 
             if (totalImgs === 0) return;
             bgUploadDelta(totalImgs);
@@ -1511,8 +1511,23 @@
         // ==========================================
         // RENDER RECORDS
         // ==========================================
+        // 回収場所の入力履歴をプルダウン候補(datalist)に反映する
+        function updateReportFieldSuggestions() {
+            [['dl-combustible', 'combustible'], ['dl-soil', 'soil']].forEach(function(pair) {
+                var dl = document.getElementById(pair[0]);
+                if (!dl) { dl = document.createElement('datalist'); dl.id = pair[0]; document.body.appendChild(dl); }
+                var seen = [];
+                state.records.forEach(function(r) {
+                    var v = (r[pair[1]] || '').trim();
+                    if (v && seen.indexOf(v) === -1) seen.push(v);
+                });
+                dl.innerHTML = seen.slice(0, 20).map(function(v) { return '<option value="' + v.replace(/"/g, '&quot;') + '"></option>'; }).join('');
+            });
+        }
+
         function renderRecords() {
             renderTopCounters();
+            updateReportFieldSuggestions();
             var list = document.getElementById('records-list');
             if (state.records.length === 0) {
                 list.innerHTML = '<div class="empty"><div class="empty-icon">🧹</div><div class="empty-text">まだ記録がありません<br>「記録を追加」から活動を記録しましょう！</div></div>';
@@ -1623,40 +1638,56 @@
             var members = [...document.querySelectorAll('#e-member-checkboxes input:checked')].map(function(c) { return c.value; });
             if (!date || !place || !work || members.length === 0) { showToast('日付・場所・メンバー・作業内容は必須です'); return; }
 
-            var progress = document.getElementById('e-upload-progress');
-            var newPhotos = editPendingPhotos.filter(function(p) { return p; });
-            var newPhotoUrls = [];
-            if (newPhotos.length > 0) {
-                progress.style.display = 'block';
-                progress.textContent = '写真 ' + newPhotos.length + '枚を同時アップロード中...';
-                var editResults = new Array(newPhotos.length);
-                await Promise.all(newPhotos.map(function(data, i) {
-                    var uploadId = 'img_' + Date.now() + '_' + i + '_' + Math.random().toString(36).slice(2, 6);
-                    return uploadImageToCloud(data, uploadId)
-                        .then(function(url) { editResults[i] = url; })
-                        .catch(function() { showToast('写真' + (i + 1) + 'のアップロードに失敗しました'); });
-                }));
-                newPhotoUrls = editResults.filter(Boolean);
-            }
-            var allPhotos = editExistingPhotos.filter(function(p) { return p; }).concat(newPhotoUrls);
-            var cleanPairs = await uploadPairs(editPairs, progress, null);
             var idx = state.records.findIndex(function(r) { return r.id === editingId; });
-            if (idx !== -1) {
-                state.records[idx] = Object.assign({}, state.records[idx], { date: date, place: place, work: work, memo: memo, members: members, combustible: combustible, soil: soil, material: material, weeding: weeding, photos: allPhotos.length > 0 ? allPhotos : undefined, pairs: cleanPairs.length > 0 ? cleanPairs : undefined });
-                if (allPhotos.length === 0) delete state.records[idx].photos;
-                if (cleanPairs.length === 0) delete state.records[idx].pairs;
-                if (!combustible) delete state.records[idx].combustible;
-                if (!soil) delete state.records[idx].soil;
-                if (!material) delete state.records[idx].material;
-                if (!weeding) delete state.records[idx].weeding;
-                progress.textContent = '保存中...';
-                await saveToCloud();
-                renderRecords();
-                updateHeaderCount();
-                showToast('記録を更新しました！');
-            }
-            progress.style.display = 'none';
+            if (idx === -1) { closeEdit(); return; }
+
+            var newPhotos = editPendingPhotos.filter(function(p) { return p; });
+            var keptPhotos = editExistingPhotos.filter(function(p) { return p; });
+            var pairsToSend = editPairs;
+            var pairImgCount = 0;
+            pairsToSend.forEach(function(p) {
+                ['before', 'after'].forEach(function(side) { if (p[side] && p[side].data) pairImgCount++; });
+            });
+            var totalImgs = newPhotos.length + pairImgCount;
+
+            // テキスト系と既存写真は即反映してモーダルを閉じ、新しい写真は裏で送る
+            state.records[idx] = Object.assign({}, state.records[idx], { date: date, place: place, work: work, memo: memo, members: members, combustible: combustible, soil: soil, material: material, weeding: weeding });
+            if (!combustible) delete state.records[idx].combustible;
+            if (!soil) delete state.records[idx].soil;
+            if (!material) delete state.records[idx].material;
+            if (!weeding) delete state.records[idx].weeding;
+            var record = state.records[idx];
+            if (keptPhotos.length > 0) record.photos = keptPhotos; else delete record.photos;
             closeEdit();
+            showToast(totalImgs > 0 ? '記録を更新しました！写真' + totalImgs + '枚は裏で送信中です' : '記録を更新しました！');
+            setTimeout(function() { renderRecords(); updateHeaderCount(); saveToCloud(); }, 0);
+
+            bgUploadDelta(totalImgs);
+            var photoResults = new Array(newPhotos.length);
+            var photoJobs = newPhotos.map(function(data, i) {
+                var uploadId = 'img_' + Date.now() + '_' + i + '_' + Math.random().toString(36).slice(2, 6);
+                return uploadImageToCloud(data, uploadId)
+                    .then(function(url) { photoResults[i] = url; })
+                    .catch(function() { photoResults[i] = null; })
+                    .then(function() { bgUploadDelta(-1); });
+            });
+            var pairsDone = uploadPairs(pairsToSend, null, null)
+                .then(function(cp) { bgUploadDelta(-pairImgCount); return cp; })
+                .catch(function() { bgUploadDelta(-pairImgCount); return []; });
+            Promise.all([Promise.all(photoJobs), pairsDone]).then(function(res) {
+                var urls = photoResults.filter(Boolean);
+                var cleanPairs = res[1] || [];
+                if (state.records.indexOf(record) === -1) return; // 送信中に記録が削除された場合は紐付けない
+                var all = keptPhotos.concat(urls);
+                if (all.length > 0) record.photos = all; else delete record.photos;
+                if (cleanPairs.length > 0) record.pairs = cleanPairs; else delete record.pairs;
+                saveToCloud();
+                renderRecords();
+                if (totalImgs > 0) {
+                    var failed = newPhotos.length - urls.length;
+                    showToast(failed > 0 ? '写真の送信が完了しました（' + failed + '枚は失敗）' : '写真の送信が完了しました');
+                }
+            });
         }
 
         // ==========================================
