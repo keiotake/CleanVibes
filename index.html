@@ -545,7 +545,7 @@
             <div style="margin-bottom: 14px; display: flex; gap: 8px;">
                 <button id="add-toggle" onclick="toggleAddForm()" class="add-toggle-btn">+ 記録を追加</button>
                 <button id="sort-btn" onclick="toggleSort()" style="background: var(--ink); color: #fff; border: none; border-radius: 12px; padding: 12px 20px; font-family: 'Zen Kaku Gothic New', sans-serif; font-weight: 700; letter-spacing: 0.08em; cursor: pointer; transition: all 0.22s; white-space: nowrap; flex-shrink: 0;">新しい順</button>
-                <button id="report-btn" onclick="generateReport()" style="background: var(--gradient-vivid); color: #fff; border: none; border-radius: 12px; padding: 12px 20px; font-family: 'Zen Kaku Gothic New', sans-serif; font-weight: 700; letter-spacing: 0.06em; cursor: pointer; transition: all 0.22s; white-space: nowrap; flex-shrink: 0; box-shadow: 0 4px 12px rgba(14,160,230,0.28);">📄 報告書</button>
+                <button id="report-btn" onclick="openReportModal()" style="background: var(--gradient-vivid); color: #fff; border: none; border-radius: 12px; padding: 12px 20px; font-family: 'Zen Kaku Gothic New', sans-serif; font-weight: 700; letter-spacing: 0.06em; cursor: pointer; transition: all 0.22s; white-space: nowrap; flex-shrink: 0; box-shadow: 0 4px 12px rgba(14,160,230,0.28);">📄 報告書</button>
             </div>
             <form id="add-form" style="display: none;">
                 <div class="form-section">
@@ -723,6 +723,30 @@
     </div>
 
     <!-- Edit Modal -->
+    <!-- Report Modal -->
+    <div id="report-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(8,24,33,0.5);z-index:310;align-items:center;justify-content:center;backdrop-filter:blur(5px);">
+        <div class="modal-content">
+            <div class="form-title" style="margin-bottom:12px;">📄 行政報告を作成</div>
+            <div style="font-size:.85rem;color:var(--gray-500);margin-bottom:8px;">報告する活動日を選んでください（複数選択できます）</div>
+            <div id="rp-date-list" style="max-height:200px;overflow-y:auto;border:1.5px solid var(--gray-200);border-radius:10px;padding:10px;margin-bottom:12px;"></div>
+            <div class="form-group full" style="margin-bottom:12px;"><label>来週の予定（任意・メール文に入ります）</label><input id="rp-next" type="text" placeholder="例: さくらの里周辺の活動"></div>
+            <div class="form-actions" style="margin-bottom:12px;">
+                <button class="btn btn-primary" onclick="buildReportMailText()">✉️ メール文を作成</button>
+                <button class="btn btn-primary" id="rp-pptx-btn" onclick="generateReportPptx()">📊 パワポを作成</button>
+                <button class="btn btn-secondary" onclick="closeReportModal()">閉じる</button>
+            </div>
+            <div id="rp-out" style="display:none;">
+                <div style="font-size:.85rem;color:var(--gray-500);margin-bottom:4px;">件名</div>
+                <input id="rp-subject" type="text" style="width:100%;margin-bottom:8px;padding:8px 10px;border:1.5px solid var(--gray-200);border-radius:8px;font-family:'Zen Kaku Gothic New',sans-serif;">
+                <div style="font-size:.85rem;color:var(--gray-500);margin-bottom:4px;">本文（そのまま編集できます）</div>
+                <textarea id="rp-body" style="width:100%;height:220px;padding:8px 10px;border:1.5px solid var(--gray-200);border-radius:8px;font-family:'Zen Kaku Gothic New',sans-serif;font-size:.85rem;"></textarea>
+                <div class="form-actions" style="margin-top:8px;">
+                    <button class="btn btn-primary" onclick="copyReportMail()">📋 件名と本文をコピー</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="edit-modal">
         <div class="modal-content">
             <div class="form-title" style="margin-bottom: 20px;">記録を編集</div>
@@ -1221,6 +1245,207 @@
         function toWareki(year) {
             var r = year - 2018; // 2019 = 令和元年
             return '令和' + (r === 1 ? '元' : r) + '年';
+        }
+
+        // ==========================================
+        // 行政報告（活動日を選んでメール文/パワポを作成）
+        // ==========================================
+        function rpEsc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
+
+        function fmtDateJP(d) {
+            var dt = new Date(d + 'T00:00:00');
+            var w = ['日', '月', '火', '水', '木', '金', '土'][dt.getDay()];
+            return (dt.getMonth() + 1) + '月' + dt.getDate() + '日（' + w + '）';
+        }
+
+        function openReportModal() {
+            if (state.records.length === 0) { showToast('まだ記録がありません'); return; }
+            var recent = state.records.slice(0, 30);
+            var newestDate = recent[0].date;
+            document.getElementById('rp-date-list').innerHTML = recent.map(function(r) {
+                var ph = (r.pairs && r.pairs.length ? ' 📷' : (r.photos && r.photos.length ? ' 🖼' : ''));
+                return '<label style="display:flex;align-items:center;gap:8px;padding:4px 2px;font-size:.9rem;cursor:pointer;">' +
+                    '<input type="checkbox" value="' + r.id + '"' + (r.date === newestDate ? ' checked' : '') + '>' +
+                    fmtDateJP(r.date) + '　' + rpEsc(r.place) + ph + '</label>';
+            }).join('');
+            document.getElementById('rp-out').style.display = 'none';
+            document.getElementById('report-modal').style.display = 'flex';
+        }
+        function closeReportModal() { document.getElementById('report-modal').style.display = 'none'; }
+
+        function getSelectedReportRecords() {
+            var ids = [...document.querySelectorAll('#rp-date-list input:checked')].map(function(c) { return Number(c.value); });
+            var recs = state.records.filter(function(r) { return ids.indexOf(r.id) !== -1; });
+            recs.sort(function(a, b) { return a.date < b.date ? -1 : 1; });
+            if (recs.length === 0) showToast('活動日を選んでください');
+            return recs;
+        }
+
+        function uniqVals(recs, key) {
+            var out = [];
+            recs.forEach(function(r) { var v = (r[key] || '').trim(); if (v && out.indexOf(v) === -1) out.push(v); });
+            return out;
+        }
+
+        function buildReportMailText() {
+            var recs = getSelectedReportRecords();
+            if (recs.length === 0) return;
+            var lines = [];
+            lines.push('伊東市役所 建設課 様');
+            lines.push('　　　　　 環境課 車庫 様');
+            lines.push('');
+            lines.push('CCの皆様');
+            lines.push('');
+            lines.push('いつも大変お世話になっております。');
+            lines.push('CleanVibesの大竹でございます。');
+            lines.push('');
+            lines.push('掲題の件、以下の通り活動を実施いたしましたので、ご確認くださいませ。');
+            lines.push('');
+            recs.forEach(function(r) {
+                lines.push('* ' + fmtDateJP(r.date) + '　' + r.place);
+                lines.push('→' + r.work);
+                if (r.memo) lines.push('（' + r.memo + '）');
+                lines.push('');
+            });
+            var weedings = uniqVals(recs, 'weeding');
+            if (weedings.length) {
+                lines.push('【防草の工程・材料】');
+                weedings.forEach(function(v) { lines.push(v); });
+                lines.push('');
+            }
+            var materials = uniqVals(recs, 'material');
+            if (materials.length) {
+                lines.push('【支給材料の使用量】');
+                materials.forEach(function(v) { lines.push(v); });
+                lines.push('');
+            }
+            var combs = uniqVals(recs, 'combustible');
+            var soils = uniqVals(recs, 'soil');
+            if (combs.length) lines.push('可燃物につきましては、ガラ袋・土嚢袋に詰め、' + combs.join('、') + 'に置かせていただいております。');
+            if (soils.length) lines.push('土砂につきましては、' + soils.join('、') + 'に置かせていただいております。');
+            if (combs.length || soils.length) lines.push('');
+            var next = document.getElementById('rp-next').value.trim();
+            if (next) { lines.push('来週は' + next + 'を予定しております。引き続きよろしくお願いいたします。'); }
+            else { lines.push('引き続きよろしくお願いいたします。'); }
+            lines.push('');
+            lines.push('CleanVibes 大竹');
+            var dates = recs.map(function(r) { var dt = new Date(r.date + 'T00:00:00'); return (dt.getMonth() + 1) + '/' + dt.getDate(); });
+            document.getElementById('rp-subject').value = '【CleanVibes】活動報告（' + dates.join('・') + '）';
+            document.getElementById('rp-body').value = lines.join('\n');
+            document.getElementById('rp-out').style.display = 'block';
+        }
+
+        function copyReportMail() {
+            var t = document.getElementById('rp-subject').value + '\n\n' + document.getElementById('rp-body').value;
+            (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject())
+                .then(function() { showToast('件名と本文をコピーしました'); })
+                .catch(function() {
+                    var ta = document.getElementById('rp-body');
+                    ta.select(); document.execCommand('copy');
+                    showToast('本文をコピーしました');
+                });
+        }
+
+        // PptxGenJS は必要になった時だけCDNから読み込む
+        var _pptxLoading = null;
+        function loadPptxLib() {
+            if (window.PptxGenJS) return Promise.resolve();
+            if (_pptxLoading) return _pptxLoading;
+            _pptxLoading = new Promise(function(resolve, reject) {
+                var s = document.createElement('script');
+                s.src = 'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js';
+                s.onload = resolve;
+                s.onerror = function() { _pptxLoading = null; reject(new Error('pptx lib load failed')); };
+                document.head.appendChild(s);
+            });
+            return _pptxLoading;
+        }
+
+        // 写真をdataURLで取得。直接fetchがCORSで失敗したらGAS経由(JSONP)で取得
+        function fetchImageDataUrl(url) {
+            return fetch(url).then(function(r) { if (!r.ok) throw 0; return r.blob(); }).then(function(b) {
+                return new Promise(function(res) { var fr = new FileReader(); fr.onload = function() { res(fr.result); }; fr.readAsDataURL(b); });
+            }).catch(function() {
+                return new Promise(function(res, rej) {
+                    var cb = 'ph_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5);
+                    var s = document.createElement('script');
+                    var timer = setTimeout(function() { cleanup(); rej(0); }, 20000);
+                    function cleanup() { clearTimeout(timer); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+                    window[cb] = function(d) { cleanup(); if (d && d.b64) res('data:image/jpeg;base64,' + d.b64); else rej(0); };
+                    s.src = GAS_URL + '?photo_b64=' + encodeURIComponent(url) + '&callback=' + cb;
+                    s.onerror = function() { cleanup(); rej(0); };
+                    document.head.appendChild(s);
+                });
+            });
+        }
+
+        async function generateReportPptx() {
+            var recs = getSelectedReportRecords();
+            if (recs.length === 0) return;
+            var btn = document.getElementById('rp-pptx-btn');
+            btn.disabled = true; btn.textContent = '作成中...';
+            try {
+                await loadPptxLib();
+                var pptx = new PptxGenJS();
+                pptx.defineLayout({ name: 'W169', width: 10, height: 5.63 });
+                pptx.layout = 'W169';
+                var title = pptx.addSlide();
+                title.addText('CleanVibes 活動報告', { x: 0.5, y: 1.6, w: 9, h: 1, fontSize: 36, bold: true, color: '0EA0E6', align: 'center' });
+                title.addText(recs.map(function(r) { return fmtDateJP(r.date); }).join(' / '), { x: 0.5, y: 2.8, w: 9, h: 0.6, fontSize: 18, align: 'center', color: '404040' });
+                title.addText('伊東市役所 建設課 様 / 環境課 車庫 様', { x: 0.5, y: 3.5, w: 9, h: 0.5, fontSize: 14, align: 'center', color: '808080' });
+                for (var ri = 0; ri < recs.length; ri++) {
+                    var r = recs[ri];
+                    var head = fmtDateJP(r.date) + '　' + r.place;
+                    var info = pptx.addSlide();
+                    info.addText(head, { x: 0.4, y: 0.3, w: 9.2, h: 0.5, fontSize: 20, bold: true, color: '0EA0E6' });
+                    var body = '作業内容：' + r.work;
+                    if (r.memo) body += '\nメモ：' + r.memo;
+                    if (r.weeding) body += '\n防草の工程・材料：' + r.weeding;
+                    if (r.material) body += '\n支給材料の使用量：' + r.material;
+                    if (r.combustible) body += '\n可燃物の回収場所：' + r.combustible;
+                    if (r.soil) body += '\n土砂の回収場所：' + r.soil;
+                    body += '\n参加者：' + (r.members || []).length + '名';
+                    info.addText(body, { x: 0.4, y: 1.0, w: 9.2, h: 4.2, fontSize: 14, color: '303030', valign: 'top' });
+                    var pairs = r.pairs || [];
+                    for (var pi = 0; pi < pairs.length; pi++) {
+                        var p = pairs[pi];
+                        var s2 = pptx.addSlide();
+                        s2.addText(head + (p.label ? '　—　' + p.label : ''), { x: 0.4, y: 0.25, w: 9.2, h: 0.5, fontSize: 16, bold: true, color: '0EA0E6' });
+                        var sides = [['before', 'Before', 0.4, 'C0504D'], ['after', 'After', 5.2, '4F9153']];
+                        for (var ii = 0; ii < sides.length; ii++) {
+                            var side = sides[ii];
+                            s2.addText(side[1], { x: side[2], y: 0.85, w: 4.4, h: 0.35, fontSize: 13, bold: true, color: side[3] });
+                            if (p[side[0]]) {
+                                try {
+                                    var du = await fetchImageDataUrl(p[side[0]]);
+                                    s2.addImage({ data: du, x: side[2], y: 1.25, w: 4.4, h: 3.9, sizing: { type: 'contain', w: 4.4, h: 3.9 } });
+                                } catch (e) {
+                                    s2.addText('（写真を取得できませんでした）', { x: side[2], y: 2.5, w: 4.4, h: 0.5, fontSize: 11, color: '808080' });
+                                }
+                            }
+                        }
+                    }
+                    var photos = (r.photos || []).slice(0, 4);
+                    if (photos.length > 0) {
+                        var s3 = pptx.addSlide();
+                        s3.addText(head + '　—　活動の様子', { x: 0.4, y: 0.25, w: 9.2, h: 0.5, fontSize: 16, bold: true, color: '0EA0E6' });
+                        var pos = [[0.4, 0.9], [5.2, 0.9], [0.4, 3.3], [5.2, 3.3]];
+                        for (var qi = 0; qi < photos.length; qi++) {
+                            try {
+                                var du2 = await fetchImageDataUrl(photos[qi]);
+                                s3.addImage({ data: du2, x: pos[qi][0], y: pos[qi][1], w: 4.4, h: 2.25, sizing: { type: 'contain', w: 4.4, h: 2.25 } });
+                            } catch (e2) { /* この写真はスキップ */ }
+                        }
+                    }
+                }
+                var d0 = new Date();
+                var fname = 'CleanVibes活動報告_' + d0.getFullYear() + String(d0.getMonth() + 1).padStart(2, '0') + String(d0.getDate()).padStart(2, '0') + '.pptx';
+                await pptx.writeFile({ fileName: fname });
+                showToast('パワポを作成しました');
+            } catch (err) {
+                showToast('パワポの作成に失敗しました');
+            }
+            btn.disabled = false; btn.textContent = '📊 パワポを作成';
         }
 
         async function generateReport() {
