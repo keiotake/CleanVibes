@@ -732,7 +732,7 @@
             <div class="form-group full" style="margin-bottom:12px;"><label>来週の予定（任意・メール文に入ります）</label><input id="rp-next" type="text" placeholder="例: さくらの里周辺の活動"></div>
             <div class="form-actions" style="margin-bottom:12px;">
                 <button class="btn btn-primary" onclick="buildReportMailText()">✉️ メール文を作成</button>
-                <button class="btn btn-primary" id="rp-pptx-btn" onclick="generateReportPptx()">📊 パワポを作成</button>
+                <button class="btn btn-primary" id="rp-pdf-btn" onclick="generateReportPdf()">📄 PDFを作成</button>
                 <button class="btn btn-secondary" onclick="closeReportModal()">閉じる</button>
             </div>
             <div id="rp-out" style="display:none;">
@@ -1346,26 +1346,40 @@
                 });
         }
 
-        // PptxGenJS は必要になった時だけCDNから読み込む
-        var _pptxLoading = null;
-        function loadPptxLib() {
-            if (window.PptxGenJS) return Promise.resolve();
-            if (_pptxLoading) return _pptxLoading;
-            _pptxLoading = new Promise(function(resolve, reject) {
+        // html2pdf.js は必要になった時だけCDNから読み込む
+        var _pdfLibLoading = null;
+        function loadPdfLib() {
+            if (window.html2pdf) return Promise.resolve();
+            if (_pdfLibLoading) return _pdfLibLoading;
+            _pdfLibLoading = new Promise(function(resolve, reject) {
                 var s = document.createElement('script');
-                s.src = 'https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js';
+                s.src = 'https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js';
                 s.onload = resolve;
-                s.onerror = function() { _pptxLoading = null; reject(new Error('pptx lib load failed')); };
+                s.onerror = function() { _pdfLibLoading = null; reject(new Error('pdf lib load failed')); };
                 document.head.appendChild(s);
             });
-            return _pptxLoading;
+            return _pdfLibLoading;
         }
 
-        // 写真をdataURLで取得。直接fetchがCORSで失敗したらGAS経由(JSONP)で取得
+        // 写真をdataURLで取得。
+        // drive.google.com/thumbnail はリダイレクト応答にCORSヘッダが無くブラウザから読めないため、
+        // CORS許可(ACAO:*)のある lh3.googleusercontent.com/d/<id> 形式を最優先で使う（実測で確認済み）。
+        // それも失敗したら元URL→GAS経由(JSONP)の順で試す。
         function fetchImageDataUrl(url) {
-            return fetch(url).then(function(r) { if (!r.ok) throw 0; return r.blob(); }).then(function(b) {
+            var candidates = [];
+            var m = String(url).match(/[?&]id=([^&]+)/);
+            if (m) candidates.push('https://lh3.googleusercontent.com/d/' + m[1] + '=w800');
+            candidates.push(url);
+            var i = 0;
+            function blobToDataUrl(b) {
                 return new Promise(function(res) { var fr = new FileReader(); fr.onload = function() { res(fr.result); }; fr.readAsDataURL(b); });
-            }).catch(function() {
+            }
+            function tryNext() {
+                if (i >= candidates.length) return fetchViaGas();
+                var u = candidates[i++];
+                return fetch(u).then(function(r) { if (!r.ok) throw 0; return r.blob(); }).then(blobToDataUrl).catch(tryNext);
+            }
+            function fetchViaGas() {
                 return new Promise(function(res, rej) {
                     var cb = 'ph_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5);
                     var s = document.createElement('script');
@@ -1376,76 +1390,105 @@
                     s.onerror = function() { cleanup(); rej(0); };
                     document.head.appendChild(s);
                 });
-            });
+            }
+            return tryNext();
         }
 
-        async function generateReportPptx() {
+        // 報告PDFの中身(A4縦)をDOMで組み立てる。写真はdataURL化済みのMapから差し込む
+        function buildReportDom(recs, imgData) {
+            var wrap = document.createElement('div');
+            // 注意: この要素自体にposition指定を付けるとhtml2pdfのクローン高さが0になり
+            // 白紙PDFになる(実測で確認)。位置指定は呼び出し側の外側ホルダーに持たせる
+            wrap.style.cssText = "width:190mm;background:#fff;color:#222;font-family:'Zen Kaku Gothic New',sans-serif;";
+            var h = '';
+            h += '<div style="text-align:center;padding:8mm 0 5mm;">' +
+                 '<div style="font-size:22pt;font-weight:700;color:#0EA0E6;">CleanVibes 活動報告</div>' +
+                 '<div style="font-size:12pt;margin-top:3mm;">' + rpEsc(recs.map(function(r) { return fmtDateJP(r.date); }).join(' / ')) + '</div>' +
+                 '<div style="font-size:10pt;color:#666;margin-top:2mm;">伊東市役所 建設課 様　／　環境課 車庫 様</div>' +
+                 '</div>';
+            recs.forEach(function(r, i) {
+                h += '<div style="' + (i > 0 ? 'page-break-before:always;' : '') + 'padding:3mm 0;">';
+                h += '<div style="font-size:14pt;font-weight:700;color:#0EA0E6;border-bottom:2px solid #0EA0E6;padding-bottom:1mm;">' + fmtDateJP(r.date) + '　' + rpEsc(r.place) + '</div>';
+                h += '<table style="font-size:10pt;margin-top:3mm;border-collapse:collapse;">';
+                [['作業内容', r.work], ['メモ', r.memo], ['防草の工程・材料', r.weeding], ['支給材料の使用量', r.material], ['可燃物の回収場所', r.combustible], ['土砂の回収場所', r.soil], ['参加者', (r.members || []).length + '名']].forEach(function(kv) {
+                    if (kv[1]) h += '<tr><td style="padding:1mm 4mm 1mm 0;color:#666;white-space:nowrap;vertical-align:top;">' + kv[0] + '</td><td style="padding:1mm 0;">' + rpEsc(kv[1]) + '</td></tr>';
+                });
+                h += '</table>';
+                (r.pairs || []).forEach(function(p) {
+                    h += '<div style="margin-top:4mm;page-break-inside:avoid;">';
+                    if (p.label) h += '<div style="font-size:10.5pt;font-weight:700;margin-bottom:1mm;">📍 ' + rpEsc(p.label) + '</div>';
+                    h += '<div style="display:flex;gap:4mm;">';
+                    [['before', 'Before', '#C0504D'], ['after', 'After', '#4F9153']].forEach(function(sd) {
+                        var d = p[sd[0]] ? imgData.get(p[sd[0]]) : null;
+                        h += '<div style="flex:1;text-align:center;">' +
+                             '<div style="font-size:9pt;font-weight:700;color:' + sd[2] + ';">' + sd[1] + '</div>' +
+                             (d ? '<img src="' + d + '" style="width:100%;max-height:75mm;object-fit:contain;">' : '<div style="font-size:9pt;color:#999;padding:10mm 0;">（写真なし）</div>') +
+                             '</div>';
+                    });
+                    h += '</div></div>';
+                });
+                var photos = (r.photos || []).slice(0, 4).map(function(u) { return imgData.get(u); }).filter(Boolean);
+                if (photos.length) {
+                    h += '<div style="margin-top:4mm;page-break-inside:avoid;"><div style="font-size:10.5pt;font-weight:700;margin-bottom:1mm;">活動の様子</div><div style="display:flex;flex-wrap:wrap;gap:3mm;">';
+                    photos.forEach(function(d) { h += '<img src="' + d + '" style="width:48%;max-height:60mm;object-fit:contain;">'; });
+                    h += '</div></div>';
+                }
+                h += '</div>';
+            });
+            wrap.innerHTML = h;
+            return wrap;
+        }
+
+        async function generateReportPdf(testMode) {
             var recs = getSelectedReportRecords();
             if (recs.length === 0) return;
-            var btn = document.getElementById('rp-pptx-btn');
+            var btn = document.getElementById('rp-pdf-btn');
             btn.disabled = true; btn.textContent = '作成中...';
+            var holder = null;
             try {
-                await loadPptxLib();
-                var pptx = new PptxGenJS();
-                pptx.defineLayout({ name: 'W169', width: 10, height: 5.63 });
-                pptx.layout = 'W169';
-                var title = pptx.addSlide();
-                title.addText('CleanVibes 活動報告', { x: 0.5, y: 1.6, w: 9, h: 1, fontSize: 36, bold: true, color: '0EA0E6', align: 'center' });
-                title.addText(recs.map(function(r) { return fmtDateJP(r.date); }).join(' / '), { x: 0.5, y: 2.8, w: 9, h: 0.6, fontSize: 18, align: 'center', color: '404040' });
-                title.addText('伊東市役所 建設課 様 / 環境課 車庫 様', { x: 0.5, y: 3.5, w: 9, h: 0.5, fontSize: 14, align: 'center', color: '808080' });
-                for (var ri = 0; ri < recs.length; ri++) {
-                    var r = recs[ri];
-                    var head = fmtDateJP(r.date) + '　' + r.place;
-                    var info = pptx.addSlide();
-                    info.addText(head, { x: 0.4, y: 0.3, w: 9.2, h: 0.5, fontSize: 20, bold: true, color: '0EA0E6' });
-                    var body = '作業内容：' + r.work;
-                    if (r.memo) body += '\nメモ：' + r.memo;
-                    if (r.weeding) body += '\n防草の工程・材料：' + r.weeding;
-                    if (r.material) body += '\n支給材料の使用量：' + r.material;
-                    if (r.combustible) body += '\n可燃物の回収場所：' + r.combustible;
-                    if (r.soil) body += '\n土砂の回収場所：' + r.soil;
-                    body += '\n参加者：' + (r.members || []).length + '名';
-                    info.addText(body, { x: 0.4, y: 1.0, w: 9.2, h: 4.2, fontSize: 14, color: '303030', valign: 'top' });
-                    var pairs = r.pairs || [];
-                    for (var pi = 0; pi < pairs.length; pi++) {
-                        var p = pairs[pi];
-                        var s2 = pptx.addSlide();
-                        s2.addText(head + (p.label ? '　—　' + p.label : ''), { x: 0.4, y: 0.25, w: 9.2, h: 0.5, fontSize: 16, bold: true, color: '0EA0E6' });
-                        var sides = [['before', 'Before', 0.4, 'C0504D'], ['after', 'After', 5.2, '4F9153']];
-                        for (var ii = 0; ii < sides.length; ii++) {
-                            var side = sides[ii];
-                            s2.addText(side[1], { x: side[2], y: 0.85, w: 4.4, h: 0.35, fontSize: 13, bold: true, color: side[3] });
-                            if (p[side[0]]) {
-                                try {
-                                    var du = await fetchImageDataUrl(p[side[0]]);
-                                    s2.addImage({ data: du, x: side[2], y: 1.25, w: 4.4, h: 3.9, sizing: { type: 'contain', w: 4.4, h: 3.9 } });
-                                } catch (e) {
-                                    s2.addText('（写真を取得できませんでした）', { x: side[2], y: 2.5, w: 4.4, h: 0.5, fontSize: 11, color: '808080' });
-                                }
-                            }
-                        }
-                    }
-                    var photos = (r.photos || []).slice(0, 4);
-                    if (photos.length > 0) {
-                        var s3 = pptx.addSlide();
-                        s3.addText(head + '　—　活動の様子', { x: 0.4, y: 0.25, w: 9.2, h: 0.5, fontSize: 16, bold: true, color: '0EA0E6' });
-                        var pos = [[0.4, 0.9], [5.2, 0.9], [0.4, 3.3], [5.2, 3.3]];
-                        for (var qi = 0; qi < photos.length; qi++) {
-                            try {
-                                var du2 = await fetchImageDataUrl(photos[qi]);
-                                s3.addImage({ data: du2, x: pos[qi][0], y: pos[qi][1], w: 4.4, h: 2.25, sizing: { type: 'contain', w: 4.4, h: 2.25 } });
-                            } catch (e2) { /* この写真はスキップ */ }
-                        }
-                    }
-                }
+                await loadPdfLib();
+                // 写真を先に全部dataURL化する（stateには一切触れない独立Mapに保持）
+                var urls = [];
+                recs.forEach(function(r) {
+                    (r.pairs || []).forEach(function(p) { ['before', 'after'].forEach(function(sd) { if (p[sd] && urls.indexOf(p[sd]) === -1) urls.push(p[sd]); }); });
+                    (r.photos || []).slice(0, 4).forEach(function(u) { if (urls.indexOf(u) === -1) urls.push(u); });
+                });
+                var imgData = new Map();
+                var done = 0;
+                if (urls.length) btn.textContent = '写真取得中 0/' + urls.length;
+                await Promise.all(urls.map(function(u) {
+                    return fetchImageDataUrl(u).then(function(d) { imgData.set(u, d); }).catch(function() { imgData.set(u, null); })
+                        .then(function() { done++; btn.textContent = '写真取得中 ' + done + '/' + urls.length; });
+                }));
+                var el = buildReportDom(recs, imgData);
+                holder = document.createElement('div');
+                holder.style.cssText = 'position:fixed;left:0;top:0;z-index:-9999;overflow:hidden;';
+                holder.appendChild(el);
+                document.body.appendChild(holder);
+                btn.textContent = 'PDF生成中...';
                 var d0 = new Date();
-                var fname = 'CleanVibes活動報告_' + d0.getFullYear() + String(d0.getMonth() + 1).padStart(2, '0') + String(d0.getDate()).padStart(2, '0') + '.pptx';
-                await pptx.writeFile({ fileName: fname });
-                showToast('パワポを作成しました');
+                var fname = 'CleanVibes活動報告_' + d0.getFullYear() + String(d0.getMonth() + 1).padStart(2, '0') + String(d0.getDate()).padStart(2, '0') + '.pdf';
+                var worker = html2pdf().set({
+                    margin: [8, 8, 10, 8],
+                    filename: fname,
+                    image: { type: 'jpeg', quality: 0.9 },
+                    html2canvas: { scale: 2, useCORS: true },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                    pagebreak: { mode: ['css'] }
+                }).from(el);
+                var result;
+                if (testMode) { result = (await worker.outputPdf('datauristring')).length; }
+                else { await worker.save(); }
+                document.body.removeChild(holder);
+                var missing = urls.filter(function(u) { return !imgData.get(u); }).length;
+                showToast(missing > 0 ? 'PDFを作成しました（写真' + missing + '枚は取得できず）' : 'PDFを作成しました');
+                btn.disabled = false; btn.textContent = '📄 PDFを作成';
+                return result;
             } catch (err) {
-                showToast('パワポの作成に失敗しました');
+                if (holder && holder.parentNode) document.body.removeChild(holder);
+                showToast('PDFの作成に失敗しました');
+                btn.disabled = false; btn.textContent = '📄 PDFを作成';
             }
-            btn.disabled = false; btn.textContent = '📊 パワポを作成';
         }
 
         async function generateReport() {
