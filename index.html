@@ -1847,7 +1847,7 @@
                     var v = (r[pair[1]] || '').trim();
                     if (v && seen.indexOf(v) === -1) seen.push(v);
                 });
-                dl.innerHTML = seen.slice(0, 20).map(function(v) { return '<option value="' + v.replace(/"/g, '&quot;') + '"></option>'; }).join('');
+                dl.innerHTML = seen.map(function(v) { return '<option value="' + v.replace(/"/g, '&quot;') + '"></option>'; }).join('');
             });
         }
 
