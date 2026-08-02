@@ -942,21 +942,47 @@
             });
         }
 
+        // 保存後の検証用にクラウドの現状を読み直す(JSONP)
+        function fetchCloudSnapshot() {
+            return new Promise(function(res, rej) {
+                var cb = 'vf_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5);
+                var s = document.createElement('script');
+                var timer = setTimeout(function() { cleanup(); rej(0); }, 15000);
+                function cleanup() { clearTimeout(timer); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+                window[cb] = function(data) { cleanup(); res(data); };
+                s.src = GAS_URL + '?callback=' + cb + '&t=' + Date.now();
+                s.onerror = function() { cleanup(); rej(0); };
+                document.head.appendChild(s);
+            });
+        }
+
         // 保存は直列化する（裏の写真送信完了時の保存と通常保存が同時に走っても、
-        // 到着順の逆転で古いデータが後勝ちしないようにするため）
+        // 到着順の逆転で古いデータが後勝ちしないようにするため）。
+        // さらに: no-corsのPOSTは成否が見えず「保存できたつもりでデータが消える」
+        // 事故が実際に起きたため、保存後に読み直してrevが一致するか検証し、
+        // 不一致なら最大3回まで自動再送、それでも失敗なら明確に警告する。
         var _saveInFlight = false, _saveQueued = false;
         async function saveToCloud() {
             if (_saveInFlight) { _saveQueued = true; return; }
             _saveInFlight = true;
             setSyncStatus('loading');
-            try {
-                var params = new URLSearchParams();
-                params.append('data', JSON.stringify(state));
-                await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
-                setSyncStatus('ok');
-            } catch(e) {
+            var okSave = false;
+            for (var attempt = 0; attempt < 3 && !okSave; attempt++) {
+                try {
+                    state.rev = Date.now();
+                    var sentRev = state.rev;
+                    var params = new URLSearchParams();
+                    params.append('data', JSON.stringify(state));
+                    await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
+                    var snap = await fetchCloudSnapshot();
+                    okSave = !!(snap && snap.rev === sentRev);
+                } catch (e) { okSave = false; }
+                if (!okSave) await new Promise(function(r) { setTimeout(r, 1500); });
+            }
+            if (okSave) { setSyncStatus('ok'); }
+            else {
                 setSyncStatus('error');
-                showToast('保存に失敗しました');
+                showToast('⚠️ 保存を確認できませんでした。電波の良い場所で、記録の編集→保存をやり直してください');
             }
             _saveInFlight = false;
             if (_saveQueued) { _saveQueued = false; saveToCloud(); }
