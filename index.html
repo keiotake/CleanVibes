@@ -552,7 +552,7 @@
                     <div class="form-title">活動記録を追加</div>
                     <div class="form-grid">
                         <div class="form-group"><label>日時 *</label><input id="f-date" type="date" required></div>
-                        <div class="form-group"><label>場所 *</label><input id="f-place" type="text" placeholder="例: 〇〇公園" required></div>
+                        <div class="form-group"><label>場所 *</label><input id="f-place" type="text" list="dl-place" placeholder="例: 〇〇公園" required></div>
                     </div>
                     <div class="form-grid">
                         <div class="form-group full"><label>参加メンバー *</label><div id="member-checkboxes" class="checkbox-group"></div></div>
@@ -752,7 +752,7 @@
             <div class="form-title" style="margin-bottom: 20px;">記録を編集</div>
             <div class="form-grid">
                 <div class="form-group"><label>日付 *</label><input id="e-date" type="date" required></div>
-                <div class="form-group"><label>場所 *</label><input id="e-place" type="text" required></div>
+                <div class="form-group"><label>場所 *</label><input id="e-place" type="text" list="dl-place" required></div>
             </div>
             <div class="form-grid">
                 <div class="form-group full"><label>参加メンバー *</label><div id="e-member-checkboxes" class="checkbox-group"></div></div>
@@ -1839,7 +1839,7 @@
         // ==========================================
         // 回収場所の入力履歴をプルダウン候補(datalist)に反映する
         function updateReportFieldSuggestions() {
-            [['dl-combustible', 'combustible'], ['dl-soil', 'soil']].forEach(function(pair) {
+            [['dl-place', 'place'], ['dl-combustible', 'combustible'], ['dl-soil', 'soil']].forEach(function(pair) {
                 var dl = document.getElementById(pair[0]);
                 if (!dl) { dl = document.createElement('datalist'); dl.id = pair[0]; document.body.appendChild(dl); }
                 var seen = [];
