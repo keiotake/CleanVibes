@@ -729,6 +729,8 @@
             <div class="form-title" style="margin-bottom:12px;">📄 行政報告を作成</div>
             <div style="font-size:.85rem;color:var(--gray-500);margin-bottom:8px;">報告する活動日を選んでください（複数選択できます）</div>
             <div id="rp-date-list" style="max-height:200px;overflow-y:auto;border:1.5px solid var(--gray-200);border-radius:10px;padding:10px;margin-bottom:12px;"></div>
+            <div style="font-size:.85rem;color:var(--gray-500);margin-bottom:4px;">報告先（メールの宛名と宛先アドレスに入ります）</div>
+            <div id="rp-recipients" style="border:1.5px solid var(--gray-200);border-radius:10px;padding:8px 10px;margin-bottom:12px;"></div>
             <div class="form-group full" style="margin-bottom:12px;"><label>来週の予定（任意・メール文に入ります）</label><input id="rp-next" type="text" placeholder="例: さくらの里周辺の活動"></div>
             <div class="form-actions" style="margin-bottom:12px;">
                 <button class="btn btn-primary" onclick="buildReportMailText()">✉️ メール文を作成</button>
@@ -1278,6 +1280,20 @@
         // ==========================================
         function rpEsc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); }
 
+        // 報告先の候補（チェックした宛先がメールの宛名・宛先アドレス・パワポ表紙に入る）
+        var RP_RECIPIENTS = [
+            { label: '建設課', full: '伊東市役所 建設課', email: 'kensetu@city.ito.shizuoka.jp', def: true },
+            { label: '観光課', full: '伊東市役所 観光課', email: 'kankou@city.ito.shizuoka.jp', def: false },
+            { label: '環境課', full: '伊東市役所 環境課', email: 'kankyou@city.ito.shizuoka.jp', def: false },
+            { label: '環境課 車庫', full: '伊東市役所 環境課 車庫', email: 'kankyou-syako@city.ito.shizuoka.jp', def: true },
+            { label: '熱海土木事務所 伊東支所', full: '熱海土木事務所 伊東支所', email: 'atado-iji@pref.shizuoka.lg.jp', def: false },
+            { label: '熱海土木事務所 維持調査課', full: '熱海土木事務所 維持調査課', email: 'atado-ito@pref.shizuoka.lg.jp', def: false }
+        ];
+
+        function getSelectedRecipients() {
+            return [...document.querySelectorAll('#rp-recipients input:checked')].map(function(c) { return RP_RECIPIENTS[Number(c.dataset.ri)]; });
+        }
+
         function fmtDateJP(d) {
             var dt = new Date(d + 'T00:00:00');
             var w = ['日', '月', '火', '水', '木', '金', '土'][dt.getDay()];
@@ -1286,6 +1302,12 @@
 
         function openReportModal() {
             if (state.records.length === 0) { showToast('まだ記録がありません'); return; }
+            var rc = document.getElementById('rp-recipients');
+            if (!rc.innerHTML) {
+                rc.innerHTML = RP_RECIPIENTS.map(function(r, i) {
+                    return '<label style="display:flex;align-items:center;gap:8px;padding:3px 2px;font-size:.9rem;cursor:pointer;"><input type="checkbox" data-ri="' + i + '"' + (r.def ? ' checked' : '') + '>' + rpEsc(r.label) + '</label>';
+                }).join('');
+            }
             var recent = state.records.slice(0, 30);
             var newestDate = recent[0].date;
             document.getElementById('rp-date-list').innerHTML = recent.map(function(r) {
@@ -1316,9 +1338,13 @@
         function buildReportMailText() {
             var recs = getSelectedReportRecords();
             if (recs.length === 0) return;
+            var to = getSelectedRecipients();
+            if (to.length === 0) { showToast('報告先を選んでください'); return; }
             var lines = [];
-            lines.push('伊東市役所 建設課 様');
-            lines.push('　　　　　 環境課 車庫 様');
+            // 宛先アドレス行（メールアプリのToにそのままコピペできるように本文先頭へ）
+            lines.push('宛先：' + to.map(function(t) { return t.email; }).join('、'));
+            lines.push('');
+            to.forEach(function(t) { lines.push(t.full + ' 様'); });
             lines.push('');
             lines.push('CCの皆様');
             lines.push('');
@@ -1485,7 +1511,8 @@
                 cover.addText('CleanVibes', { x: 0.5, y: 0.95, w: 9, h: 0.65, fontSize: 26, bold: true, color: RP_NAVY, align: 'center', fontFace: 'Meiryo' });
                 cover.addText('活動報告書', { x: 0.5, y: 1.6, w: 9, h: 0.95, fontSize: 36, bold: true, color: RP_INK, align: 'center', fontFace: 'Meiryo' });
                 cover.addShape('line', { x: 3.2, y: 2.75, w: 3.6, h: 0, line: { color: RP_NAVY, width: 1.5 } });
-                cover.addText('伊東市役所 建設課 様　／　環境課 車庫 様', { x: 0.5, y: 2.95, w: 9, h: 0.45, fontSize: 14, color: RP_INK, align: 'center', fontFace: 'Meiryo' });
+                var coverTo = getSelectedRecipients().map(function(t) { return t.full + ' 様'; }).join('　／　');
+                cover.addText(coverTo || '伊東市役所 建設課 様', { x: 0.5, y: 2.95, w: 9, h: 0.45, fontSize: coverTo.length > 40 ? 11 : 14, color: RP_INK, align: 'center', fontFace: 'Meiryo' });
                 cover.addText('活動日：' + recs.map(function(r) { return fmtDateJP(r.date); }).join('、'), { x: 0.5, y: 3.45, w: 9, h: 0.45, fontSize: 13, color: RP_INK, align: 'center', fontFace: 'Meiryo' });
                 cover.addText('活動時間：5時30分～7時30分', { x: 0.5, y: 3.9, w: 9, h: 0.45, fontSize: 13, color: RP_INK, align: 'center', fontFace: 'Meiryo' });
                 cover.addText('提出日：' + d0.getFullYear() + '年' + (d0.getMonth() + 1) + '月' + d0.getDate() + '日', { x: 0.5, y: 4.45, w: 9, h: 0.4, fontSize: 12, color: RP_GRAY, align: 'center', fontFace: 'Meiryo' });
