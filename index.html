@@ -566,8 +566,11 @@
                     <div class="form-grid">
                         <div class="form-group full"><label>可燃物の回収場所（行政報告用）</label><input id="f-combustible" type="text" list="dl-combustible" placeholder="例: 伊豆伊東高校スロープ手前"></div>
                         <div class="form-group full"><label>土砂の回収場所（行政報告用）</label><input id="f-soil" type="text" list="dl-soil" placeholder="例: 〇〇交差点脇に土嚢袋で仮置き"></div>
+                        <div class="form-group full"><label>回収量（行政報告用）</label><input id="f-bags" type="text" placeholder="例: ガラ袋3袋・土嚢袋2袋"></div>
+                        <div class="form-group full"><label>作業範囲（行政報告用）</label><input id="f-area" type="text" placeholder="例: 〇〇交差点～△△バス停 約200m"></div>
                         <div class="form-group full"><label>支給材料の使用量（行政報告用）</label><input id="f-material" type="text" placeholder="例: マサファルト3袋半 使用"></div>
                         <div class="form-group full"><label>防草の工程・材料（行政報告用）</label><textarea id="f-weeding" placeholder="例: モルタル／散水パッチ／固まる砂による防草。物理除去→焼却→発芽抑制→アルカリ水散布"></textarea></div>
+                        <div class="form-group full"><label>気づき・危険箇所（行政報告用）</label><textarea id="f-notice" placeholder="例: カーブミラーの向きずれ、舗装の陥没あり（写真あり）など"></textarea></div>
                     </div>
                     <div class="form-grid">
                         <div class="form-group full">
@@ -768,8 +771,11 @@
             <div class="form-grid">
                 <div class="form-group full"><label>可燃物の回収場所（行政報告用）</label><input id="e-combustible" type="text" list="dl-combustible" placeholder="例: 伊豆伊東高校スロープ手前"></div>
                 <div class="form-group full"><label>土砂の回収場所（行政報告用）</label><input id="e-soil" type="text" list="dl-soil" placeholder="例: 〇〇交差点脇に土嚢袋で仮置き"></div>
+                <div class="form-group full"><label>回収量（行政報告用）</label><input id="e-bags" type="text" placeholder="例: ガラ袋3袋・土嚢袋2袋"></div>
+                <div class="form-group full"><label>作業範囲（行政報告用）</label><input id="e-area" type="text" placeholder="例: 〇〇交差点～△△バス停 約200m"></div>
                 <div class="form-group full"><label>支給材料の使用量（行政報告用）</label><input id="e-material" type="text" placeholder="例: マサファルト3袋半 使用"></div>
                 <div class="form-group full"><label>防草の工程・材料（行政報告用）</label><textarea id="e-weeding"></textarea></div>
+                <div class="form-group full"><label>気づき・危険箇所（行政報告用）</label><textarea id="e-notice"></textarea></div>
             </div>
             <div class="form-grid">
                 <div class="form-group full">
@@ -1356,6 +1362,8 @@
             recs.forEach(function(r) {
                 lines.push('* ' + fmtDateJP(r.date) + '　' + r.place);
                 lines.push('→' + r.work);
+                if (r.area) lines.push('　作業範囲：' + r.area);
+                if (r.bags) lines.push('　回収量：' + r.bags);
                 if (r.memo) lines.push('（' + r.memo + '）');
                 lines.push('');
             });
@@ -1376,6 +1384,13 @@
             if (combs.length) lines.push('可燃物につきましては、ガラ袋・土嚢袋に詰め、' + combs.join('、') + 'に置かせていただいております。');
             if (soils.length) lines.push('土砂につきましては、' + soils.join('、') + 'に置かせていただいております。');
             if (combs.length || soils.length) lines.push('');
+            var notices = [];
+            recs.forEach(function(r) { if (r.notice) notices.push(fmtDateJP(r.date) + '　' + r.place + '：' + r.notice); });
+            if (notices.length) {
+                lines.push('【気づき・危険箇所のご報告】');
+                notices.forEach(function(v) { lines.push('・' + v); });
+                lines.push('');
+            }
             var next = document.getElementById('rp-next').value.trim();
             if (next) { lines.push('来週は' + next + 'を予定しております。引き続きよろしくお願いいたします。'); }
             else { lines.push('引き続きよろしくお願いいたします。'); }
@@ -1539,10 +1554,13 @@
                     rpHeader(dv, head);
                     var rows = [];
                     [['作業内容', r.work],
+                     ['作業範囲', r.area],
                      ['防草の工程・材料', r.weeding],
                      ['支給材料の使用量', r.material],
                      ['可燃物の回収場所', r.combustible],
                      ['土砂の回収場所', r.soil],
+                     ['回収量', r.bags],
+                     ['気づき・危険箇所', r.notice],
                      ['特記事項', r.memo],
                      ['参加者', (r.members || []).length + '名']
                     ].forEach(function(kv) {
@@ -1714,8 +1732,11 @@
             var memo = document.getElementById('f-memo').value.trim();
             var combustible = document.getElementById('f-combustible').value.trim();
             var soil = document.getElementById('f-soil').value.trim();
+            var bags = document.getElementById('f-bags').value.trim();
+            var area = document.getElementById('f-area').value.trim();
             var material = document.getElementById('f-material').value.trim();
             var weeding = document.getElementById('f-weeding').value.trim();
+            var notice = document.getElementById('f-notice').value.trim();
             var members = [...document.querySelectorAll('#member-checkboxes input:checked')].map(function(c) { return c.value; });
             if (!date || !place || !work || members.length === 0) { showToast('日時・場所・メンバー・作業内容は必須です'); return; }
 
@@ -1731,13 +1752,16 @@
             var record = { id: Date.now(), date: date, place: place, work: work, memo: memo, members: members };
             if (combustible) record.combustible = combustible;
             if (soil) record.soil = soil;
+            if (bags) record.bags = bags;
+            if (area) record.area = area;
             if (material) record.material = material;
             if (weeding) record.weeding = weeding;
+            if (notice) record.notice = notice;
             state.records.unshift(record);
 
             // 押した瞬間に画面を返す：先にフォームを閉じてトーストを出し、
             // 重い一覧再描画とクラウド保存は直後のタイミングに回す
-            ['f-date', 'f-place', 'f-work', 'f-memo', 'f-combustible', 'f-soil', 'f-material', 'f-weeding'].forEach(function(id) { document.getElementById(id).value = ''; });
+            ['f-date', 'f-place', 'f-work', 'f-memo', 'f-combustible', 'f-soil', 'f-bags', 'f-area', 'f-material', 'f-weeding', 'f-notice'].forEach(function(id) { document.getElementById(id).value = ''; });
             document.querySelectorAll('#member-checkboxes input').forEach(function(c) { c.checked = false; });
             pendingPhotos = [];
             document.getElementById('f-photo-preview').innerHTML = '';
@@ -1986,8 +2010,11 @@
             document.getElementById('e-memo').value = r.memo || '';
             document.getElementById('e-combustible').value = r.combustible || '';
             document.getElementById('e-soil').value = r.soil || '';
+            document.getElementById('e-bags').value = r.bags || '';
+            document.getElementById('e-area').value = r.area || '';
             document.getElementById('e-material').value = r.material || '';
             document.getElementById('e-weeding').value = r.weeding || '';
+            document.getElementById('e-notice').value = r.notice || '';
             var c = document.getElementById('e-member-checkboxes');
             c.innerHTML = state.members.length === 0
                 ? '<span style="color:var(--gray-400);font-size:.85rem;">メンバーが登録されていません</span>'
@@ -2012,8 +2039,11 @@
             var memo = document.getElementById('e-memo').value.trim();
             var combustible = document.getElementById('e-combustible').value.trim();
             var soil = document.getElementById('e-soil').value.trim();
+            var bags = document.getElementById('e-bags').value.trim();
+            var area = document.getElementById('e-area').value.trim();
             var material = document.getElementById('e-material').value.trim();
             var weeding = document.getElementById('e-weeding').value.trim();
+            var notice = document.getElementById('e-notice').value.trim();
             var members = [...document.querySelectorAll('#e-member-checkboxes input:checked')].map(function(c) { return c.value; });
             if (!date || !place || !work || members.length === 0) { showToast('日付・場所・メンバー・作業内容は必須です'); return; }
 
@@ -2030,11 +2060,14 @@
             var totalImgs = newPhotos.length + pairImgCount;
 
             // テキスト系と既存写真は即反映してモーダルを閉じ、新しい写真は裏で送る
-            state.records[idx] = Object.assign({}, state.records[idx], { date: date, place: place, work: work, memo: memo, members: members, combustible: combustible, soil: soil, material: material, weeding: weeding });
+            state.records[idx] = Object.assign({}, state.records[idx], { date: date, place: place, work: work, memo: memo, members: members, combustible: combustible, soil: soil, bags: bags, area: area, material: material, weeding: weeding, notice: notice });
             if (!combustible) delete state.records[idx].combustible;
             if (!soil) delete state.records[idx].soil;
+            if (!bags) delete state.records[idx].bags;
+            if (!area) delete state.records[idx].area;
             if (!material) delete state.records[idx].material;
             if (!weeding) delete state.records[idx].weeding;
+            if (!notice) delete state.records[idx].notice;
             var record = state.records[idx];
             if (keptPhotos.length > 0) record.photos = keptPhotos; else delete record.photos;
             closeEdit();
