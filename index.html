@@ -574,11 +574,29 @@
                     </div>
                     <div class="form-grid">
                         <div class="form-group full">
-                            <label>写真（最大5枚）</label>
+                            <label>写真：作業の様子（最大5枚）</label>
                             <div class="photo-input-area">
                                 <label class="photo-input-btn">写真を選択<input id="f-photos" type="file" accept="image/*" multiple></label>
                             </div>
                             <div id="f-photo-preview" class="photo-preview"></div>
+                        </div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group full">
+                            <label>写真：完成写真（最大5枚）</label>
+                            <div class="photo-input-area">
+                                <label class="photo-input-btn">写真を選択<input id="f-photos-done" type="file" accept="image/*" multiple></label>
+                            </div>
+                            <div id="f-photo-preview-done" class="photo-preview"></div>
+                        </div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group full">
+                            <label>写真：行政に対応依頼したい箇所（最大5枚）</label>
+                            <div class="photo-input-area">
+                                <label class="photo-input-btn">写真を選択<input id="f-photos-gov" type="file" accept="image/*" multiple></label>
+                            </div>
+                            <div id="f-photo-preview-gov" class="photo-preview"></div>
                             <div id="f-upload-progress" class="upload-progress" style="display:none;"></div>
                         </div>
                     </div>
@@ -779,12 +797,28 @@
             </div>
             <div class="form-grid">
                 <div class="form-group full">
-                    <label>写真</label>
+                    <label>写真：作業の様子</label>
                     <div id="e-existing-photos" class="photo-preview"></div>
                     <div class="photo-input-area" style="margin-top:8px;">
                         <label class="photo-input-btn">写真を追加<input id="e-photos" type="file" accept="image/*" multiple></label>
                     </div>
                     <div id="e-photo-preview" class="photo-preview"></div>
+                </div>
+                <div class="form-group full">
+                    <label>写真：完成写真</label>
+                    <div id="e-existing-photos-done" class="photo-preview"></div>
+                    <div class="photo-input-area" style="margin-top:8px;">
+                        <label class="photo-input-btn">写真を追加<input id="e-photos-done" type="file" accept="image/*" multiple></label>
+                    </div>
+                    <div id="e-photo-preview-done" class="photo-preview"></div>
+                </div>
+                <div class="form-group full">
+                    <label>写真：行政に対応依頼したい箇所</label>
+                    <div id="e-existing-photos-gov" class="photo-preview"></div>
+                    <div class="photo-input-area" style="margin-top:8px;">
+                        <label class="photo-input-btn">写真を追加<input id="e-photos-gov" type="file" accept="image/*" multiple></label>
+                    </div>
+                    <div id="e-photo-preview-gov" class="photo-preview"></div>
                     <div id="e-upload-progress" class="upload-progress" style="display:none;"></div>
                 </div>
             </div>
@@ -819,9 +853,23 @@
         const ADMIN_PASSWORD = 'Clean Vibes';
         const DELETE_PASSWORD = '0325';
         let isAdmin = true;
-        let pendingPhotos = [];
+        let pendingPhotos = [];      // 作業の様子
+        let pendingPhotosDone = [];  // 完成写真
+        let pendingPhotosGov = [];   // 行政に対応依頼箇所
         let editPendingPhotos = [];
+        let editPendingPhotosDone = [];
+        let editPendingPhotosGov = [];
         let editExistingPhotos = [];
+        let editExistingPhotosDone = [];
+        let editExistingPhotosGov = [];
+
+        // 写真カテゴリ共通ヘルパー（key=record上のフィールド名）
+        var PH_CATS = ['photos', 'photosDone', 'photosGov'];
+        var PH_LABELS = { photos: '作業の様子', photosDone: '完成写真', photosGov: '行政に対応依頼箇所' };
+        function phSuffix(cat) { return cat === 'photosDone' ? '-done' : cat === 'photosGov' ? '-gov' : ''; }
+        function phPending(cat) { return cat === 'photosDone' ? pendingPhotosDone : cat === 'photosGov' ? pendingPhotosGov : pendingPhotos; }
+        function phEditPending(cat) { return cat === 'photosDone' ? editPendingPhotosDone : cat === 'photosGov' ? editPendingPhotosGov : editPendingPhotos; }
+        function phEditExisting(cat) { return cat === 'photosDone' ? editExistingPhotosDone : cat === 'photosGov' ? editExistingPhotosGov : editExistingPhotos; }
         let pendingPairs = [];   // 追加フォームのBefore/After（{label, before:{data|url}, after:{data|url}}）
         let editPairs = [];      // 編集モーダルのBefore/After
 
@@ -1067,71 +1115,73 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            document.getElementById('f-photos').addEventListener('change', handleAddPhotos);
-            document.getElementById('e-photos').addEventListener('change', handleEditPhotos);
+            [['f-photos', 'photos'], ['f-photos-done', 'photosDone'], ['f-photos-gov', 'photosGov']].forEach(function(w) {
+                document.getElementById(w[0]).addEventListener('change', function(e) { handleAddPhotos(e, w[1]); });
+            });
+            [['e-photos', 'photos'], ['e-photos-done', 'photosDone'], ['e-photos-gov', 'photosGov']].forEach(function(w) {
+                document.getElementById(w[0]).addEventListener('change', function(e) { handleEditPhotos(e, w[1]); });
+            });
             populateSupportItemPresets();
             onSupportTypeChange();
         });
 
-        async function handleAddPhotos(e) {
-            var files = [...e.target.files].slice(0, 5 - pendingPhotos.length);
-            var preview = document.getElementById('f-photo-preview');
+        async function handleAddPhotos(e, cat) {
+            var arr = phPending(cat);
+            var files = [...e.target.files].slice(0, 5 - arr.filter(Boolean).length);
             for (var file of files) {
                 var base64 = await resizeImage(file);
-                var idx = pendingPhotos.length;
-                pendingPhotos.push(base64);
-                var div = document.createElement('div');
-                div.className = 'photo-preview-item';
-                div.innerHTML = '<img src="' + base64 + '"><button class="remove-photo" onclick="removeAddPhoto(' + idx + ')">✕</button>';
-                preview.appendChild(div);
+                arr.push(base64);
             }
+            renderAddPhotoPreview(cat);
             e.target.value = '';
         }
 
-        function removeAddPhoto(idx) { pendingPhotos[idx] = null; renderAddPhotoPreview(); }
+        function removeAddPhoto(cat, idx) { phPending(cat)[idx] = null; renderAddPhotoPreview(cat); }
 
-        function renderAddPhotoPreview() {
-            var preview = document.getElementById('f-photo-preview');
+        function renderAddPhotoPreview(cat) {
+            if (cat === undefined) { PH_CATS.forEach(renderAddPhotoPreview); return; }
+            var preview = document.getElementById('f-photo-preview' + phSuffix(cat));
             preview.innerHTML = '';
-            pendingPhotos.forEach(function(p, i) {
+            phPending(cat).forEach(function(p, i) {
                 if (!p) return;
                 var div = document.createElement('div');
                 div.className = 'photo-preview-item';
-                div.innerHTML = '<img src="' + p + '"><button class="remove-photo" onclick="removeAddPhoto(' + i + ')">✕</button>';
+                div.innerHTML = '<img src="' + p + '"><button class="remove-photo" onclick="removeAddPhoto(\'' + cat + '\',' + i + ')">✕</button>';
                 preview.appendChild(div);
             });
         }
 
-        async function handleEditPhotos(e) {
-            var totalExisting = editExistingPhotos.filter(function(p) { return p; }).length;
-            var totalPending = editPendingPhotos.filter(function(p) { return p; }).length;
-            var remaining = 5 - totalExisting - totalPending;
+        async function handleEditPhotos(e, cat) {
+            var ex = phEditExisting(cat), pd = phEditPending(cat);
+            var remaining = 5 - ex.filter(Boolean).length - pd.filter(Boolean).length;
             var files = [...e.target.files].slice(0, remaining);
-            for (var file of files) { var base64 = await resizeImage(file); editPendingPhotos.push(base64); }
-            renderEditPhotoPreview();
+            for (var file of files) { var base64 = await resizeImage(file); pd.push(base64); }
+            renderEditPhotoPreview(cat);
             e.target.value = '';
         }
 
-        function removeEditExistingPhoto(idx) { editExistingPhotos[idx] = null; renderEditPhotoPreview(); }
-        function removeEditPendingPhoto(idx) { editPendingPhotos[idx] = null; renderEditPhotoPreview(); }
+        function removeEditExistingPhoto(cat, idx) { phEditExisting(cat)[idx] = null; renderEditPhotoPreview(cat); }
+        function removeEditPendingPhoto(cat, idx) { phEditPending(cat)[idx] = null; renderEditPhotoPreview(cat); }
 
-        function renderEditPhotoPreview() {
-            var existing = document.getElementById('e-existing-photos');
+        function renderEditPhotoPreview(cat) {
+            if (cat === undefined) { PH_CATS.forEach(renderEditPhotoPreview); return; }
+            var sfx = phSuffix(cat);
+            var existing = document.getElementById('e-existing-photos' + sfx);
             existing.innerHTML = '';
-            editExistingPhotos.forEach(function(url, i) {
+            phEditExisting(cat).forEach(function(url, i) {
                 if (!url) return;
                 var div = document.createElement('div');
                 div.className = 'photo-preview-item';
-                div.innerHTML = '<img src="' + url + '"><button class="remove-photo" onclick="removeEditExistingPhoto(' + i + ')">✕</button>';
+                div.innerHTML = '<img src="' + url + '"><button class="remove-photo" onclick="removeEditExistingPhoto(\'' + cat + '\',' + i + ')">✕</button>';
                 existing.appendChild(div);
             });
-            var preview = document.getElementById('e-photo-preview');
+            var preview = document.getElementById('e-photo-preview' + sfx);
             preview.innerHTML = '';
-            editPendingPhotos.forEach(function(p, i) {
+            phEditPending(cat).forEach(function(p, i) {
                 if (!p) return;
                 var div = document.createElement('div');
                 div.className = 'photo-preview-item';
-                div.innerHTML = '<img src="' + p + '"><button class="remove-photo" onclick="removeEditPendingPhoto(' + i + ')">✕</button>';
+                div.innerHTML = '<img src="' + p + '"><button class="remove-photo" onclick="removeEditPendingPhoto(\'' + cat + '\',' + i + ')">✕</button>';
                 preview.appendChild(div);
             });
         }
@@ -1317,7 +1367,7 @@
             var recent = state.records.slice(0, 30);
             var newestDate = recent[0].date;
             document.getElementById('rp-date-list').innerHTML = recent.map(function(r) {
-                var ph = (r.pairs && r.pairs.length ? ' 📷' : (r.photos && r.photos.length ? ' 🖼' : ''));
+                var ph = ((r.pairs && r.pairs.length) || (r.photos && r.photos.length) || (r.photosDone && r.photosDone.length) || (r.photosGov && r.photosGov.length)) ? ' 📷' : '';
                 return '<label style="display:flex;align-items:center;gap:8px;padding:4px 2px;font-size:.9rem;cursor:pointer;">' +
                     '<input type="checkbox" value="' + r.id + '"' + (r.date === newestDate ? ' checked' : '') + '>' +
                     fmtDateJP(r.date) + '　' + rpEsc(r.place) + ph + '</label>';
@@ -1386,9 +1436,11 @@
             if (combs.length || soils.length) lines.push('');
             var notices = [];
             recs.forEach(function(r) { if (r.notice) notices.push(fmtDateJP(r.date) + '　' + r.place + '：' + r.notice); });
-            if (notices.length) {
+            var govPhotoCount = recs.reduce(function(n, r) { return n + ((r.photosGov || []).length); }, 0);
+            if (notices.length || govPhotoCount > 0) {
                 lines.push('【気づき・危険箇所のご報告】');
                 notices.forEach(function(v) { lines.push('・' + v); });
+                if (govPhotoCount > 0) lines.push('（該当箇所の写真は添付資料をご参照ください）');
                 lines.push('');
             }
             var next = document.getElementById('rp-next').value.trim();
@@ -1496,7 +1548,9 @@
                 var urls = [];
                 recs.forEach(function(r) {
                     (r.pairs || []).forEach(function(p) { ['before', 'after'].forEach(function(sd) { if (p[sd] && urls.indexOf(p[sd]) === -1) urls.push(p[sd]); }); });
-                    (r.photos || []).slice(0, 4).forEach(function(u) { if (urls.indexOf(u) === -1) urls.push(u); });
+                    PH_CATS.forEach(function(cat) {
+                        (r[cat] || []).slice(0, 4).forEach(function(u) { if (urls.indexOf(u) === -1) urls.push(u); });
+                    });
                 });
                 var imgData = new Map(), done = 0;
                 if (urls.length) btn.textContent = '写真取得中 0/' + urls.length;
@@ -1592,18 +1646,25 @@
                     }
 
                     // ---- 活動の様子（2×2グリッド） ----
-                    var photos = (r.photos || []).slice(0, 4).map(function(u) { return imgData.get(u); }).filter(Boolean);
-                    if (photos.length) {
+                    PH_CATS.forEach(function(cat) {
+                        var photos = (r[cat] || []).slice(0, 4).map(function(u) { return imgData.get(u); }).filter(Boolean);
+                        var isGov = (cat === 'photosGov');
+                        if (!photos.length && !(isGov && r.notice)) return;
                         var gs = pptx.addSlide();
-                        rpHeader(gs, head + '　活動の様子');
-                        var cells = [[0.4, 1.05], [5.25, 1.05], [0.4, 3.3], [5.25, 3.3]];
+                        rpHeader(gs, head + '　' + (isGov ? '行政への対応依頼箇所' : PH_LABELS[cat]));
+                        var top = 1.05, rowH = 2.1;
+                        if (isGov && r.notice) {
+                            gs.addText('気づき・危険箇所：' + r.notice, { x: 0.4, y: 0.88, w: 9.2, h: 0.55, fontSize: 12, bold: true, color: RP_NAVY, fontFace: 'Meiryo', valign: 'top' });
+                            top = 1.5; rowH = 1.9;
+                        }
+                        var cells = [[0.4, top], [5.25, top], [0.4, top + rowH + 0.15], [5.25, top + rowH + 0.15]];
                         photos.forEach(function(d2, qi) {
                             var pos = cells[qi];
-                            gs.addShape('rect', { x: pos[0], y: pos[1], w: 4.35, h: 2.1, fill: { color: 'F4F6F8' }, line: { color: RP_LINE, width: 1 } });
-                            var f2 = rpFit({ x: pos[0] + 0.06, y: pos[1] + 0.06, w: 4.23, h: 1.98 }, d2.w, d2.h);
+                            gs.addShape('rect', { x: pos[0], y: pos[1], w: 4.35, h: rowH, fill: { color: 'F4F6F8' }, line: { color: RP_LINE, width: 1 } });
+                            var f2 = rpFit({ x: pos[0] + 0.06, y: pos[1] + 0.06, w: 4.23, h: rowH - 0.12 }, d2.w, d2.h);
                             gs.addImage({ data: d2.data, x: f2.x, y: f2.y, w: f2.w, h: f2.h });
                         });
-                    }
+                    });
                 }
 
                 var fname = 'CleanVibes活動報告_' + d0.getFullYear() + String(d0.getMonth() + 1).padStart(2, '0') + String(d0.getDate()).padStart(2, '0') + '.pptx';
@@ -1741,13 +1802,15 @@
             if (!date || !place || !work || members.length === 0) { showToast('日時・場所・メンバー・作業内容は必須です'); return; }
 
             // 記録は写真を待たずに先へ保存して画面を解放し、写真は裏で並列送信する
-            var photosToSend = pendingPhotos.filter(function(p) { return p; });
+            var catSend = {};
+            var photoCount = 0;
+            PH_CATS.forEach(function(cat) { catSend[cat] = phPending(cat).filter(Boolean); photoCount += catSend[cat].length; });
             var pairsToSend = pendingPairs;
             var pairImgCount = 0;
             pairsToSend.forEach(function(p) {
                 ['before', 'after'].forEach(function(side) { if (p[side] && p[side].data) pairImgCount++; });
             });
-            var totalImgs = photosToSend.length + pairImgCount;
+            var totalImgs = photoCount + pairImgCount;
 
             var record = { id: Date.now(), date: date, place: place, work: work, memo: memo, members: members };
             if (combustible) record.combustible = combustible;
@@ -1763,8 +1826,8 @@
             // 重い一覧再描画とクラウド保存は直後のタイミングに回す
             ['f-date', 'f-place', 'f-work', 'f-memo', 'f-combustible', 'f-soil', 'f-bags', 'f-area', 'f-material', 'f-weeding', 'f-notice'].forEach(function(id) { document.getElementById(id).value = ''; });
             document.querySelectorAll('#member-checkboxes input').forEach(function(c) { c.checked = false; });
-            pendingPhotos = [];
-            document.getElementById('f-photo-preview').innerHTML = '';
+            pendingPhotos = []; pendingPhotosDone = []; pendingPhotosGov = [];
+            PH_CATS.forEach(function(cat) { document.getElementById('f-photo-preview' + phSuffix(cat)).innerHTML = ''; });
             pendingPairs = [];
             renderPairRows('f');
             toggleAddForm();
@@ -1773,26 +1836,32 @@
 
             if (totalImgs === 0) return;
             bgUploadDelta(totalImgs);
-            var photoResults = new Array(photosToSend.length);
-            var photoJobs = photosToSend.map(function(data, i) {
-                var uploadId = 'img_' + Date.now() + '_' + i + '_' + Math.random().toString(36).slice(2, 6);
-                return uploadImageToCloud(data, uploadId)
-                    .then(function(url) { photoResults[i] = url; })
-                    .catch(function() { photoResults[i] = null; })
-                    .then(function() { bgUploadDelta(-1); });
+            var catResults = { photos: [], photosDone: [], photosGov: [] };
+            var photoJobs = [];
+            PH_CATS.forEach(function(cat) {
+                catSend[cat].forEach(function(data, i) {
+                    var uploadId = 'img_' + Date.now() + '_' + cat + i + '_' + Math.random().toString(36).slice(2, 6);
+                    photoJobs.push(uploadImageToCloud(data, uploadId)
+                        .then(function(url) { catResults[cat].push(url); })
+                        .catch(function() { /* 失敗分は枚数差で通知 */ })
+                        .then(function() { bgUploadDelta(-1); }));
+                });
             });
             var pairsDone = uploadPairs(pairsToSend, null, null)
                 .then(function(cp) { bgUploadDelta(-pairImgCount); return cp; })
                 .catch(function() { bgUploadDelta(-pairImgCount); return []; });
             Promise.all([Promise.all(photoJobs), pairsDone]).then(function(res) {
-                var urls = photoResults.filter(Boolean);
                 var cleanPairs = res[1] || [];
                 if (state.records.indexOf(record) === -1) return; // 送信中に記録が削除された場合は紐付けない
-                if (urls.length > 0) record.photos = urls;
+                var okCount = 0;
+                PH_CATS.forEach(function(cat) {
+                    okCount += catResults[cat].length;
+                    if (catResults[cat].length > 0) record[cat] = catResults[cat];
+                });
                 if (cleanPairs.length > 0) record.pairs = cleanPairs;
-                if (urls.length > 0 || cleanPairs.length > 0) { saveToCloud(); renderRecords(); }
+                if (okCount > 0 || cleanPairs.length > 0) { saveToCloud(); renderRecords(); }
                 var pairOk = cleanPairs.reduce(function(n, p) { return n + (p.before ? 1 : 0) + (p.after ? 1 : 0); }, 0);
-                var failed = totalImgs - urls.length - pairOk;
+                var failed = totalImgs - okCount - pairOk;
                 showToast(failed > 0 ? '写真の送信が完了しました（' + failed + '枚は失敗）' : '写真の送信が完了しました');
             });
         }
@@ -1946,11 +2015,15 @@
                 var d = new Date(dateStr + 'T00:00:00');
                 var ds = d.getFullYear() + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getDate()).padStart(2, '0');
                 var tags = r.members.map(function(m) { return '<span class="tag">' + displayName(m) + '</span>'; }).join('');
-                var photosHtml = (r.photos && r.photos.length > 0)
-                    ? '<div class="photo-grid">' + r.photos.map(function(url) {
-                        var fullUrl = url.replace('sz=w800', 'sz=w1600');
-                        return '<img src="' + url + '" onclick="openLightbox(\'' + fullUrl + '\')" loading="lazy">';
-                      }).join('') + '</div>' : '';
+                var photosHtml = PH_CATS.map(function(cat) {
+                    var arr = r[cat] || [];
+                    if (arr.length === 0) return '';
+                    return '<div style="font-size:0.75rem;font-weight:700;color:var(--gray-500);margin-top:6px;">📁 ' + PH_LABELS[cat] + '</div>' +
+                        '<div class="photo-grid">' + arr.map(function(url) {
+                            var fullUrl = url.replace('sz=w800', 'sz=w1600');
+                            return '<img src="' + url + '" onclick="openLightbox(\'' + fullUrl + '\')" loading="lazy">';
+                        }).join('') + '</div>';
+                }).join('');
                 var pairsHtml = (r.pairs && r.pairs.length > 0)
                     ? '<div class="card-pairs">' + r.pairs.map(function(p) {
                         function ph(url, side, jp) {
@@ -2020,7 +2093,11 @@
                 ? '<span style="color:var(--gray-400);font-size:.85rem;">メンバーが登録されていません</span>'
                 : state.members.map(function(m) { return '<label class="checkbox-label"><input type="checkbox" value="' + m + '"' + (r.members.includes(m) ? ' checked' : '') + '> ' + displayName(m) + '</label>'; }).join('');
             editExistingPhotos = r.photos ? [...r.photos] : [];
+            editExistingPhotosDone = r.photosDone ? [...r.photosDone] : [];
+            editExistingPhotosGov = r.photosGov ? [...r.photosGov] : [];
             editPendingPhotos = [];
+            editPendingPhotosDone = [];
+            editPendingPhotosGov = [];
             editPairs = (r.pairs || []).map(function(p) {
                 return { label: p.label || '', before: p.before ? { url: p.before } : null, after: p.after ? { url: p.after } : null };
             });
@@ -2050,14 +2127,18 @@
             var idx = state.records.findIndex(function(r) { return r.id === editingId; });
             if (idx === -1) { closeEdit(); return; }
 
-            var newPhotos = editPendingPhotos.filter(function(p) { return p; });
-            var keptPhotos = editExistingPhotos.filter(function(p) { return p; });
+            var catNew = {}, catKept = {}, newCount = 0;
+            PH_CATS.forEach(function(cat) {
+                catNew[cat] = phEditPending(cat).filter(Boolean);
+                catKept[cat] = phEditExisting(cat).filter(Boolean);
+                newCount += catNew[cat].length;
+            });
             var pairsToSend = editPairs;
             var pairImgCount = 0;
             pairsToSend.forEach(function(p) {
                 ['before', 'after'].forEach(function(side) { if (p[side] && p[side].data) pairImgCount++; });
             });
-            var totalImgs = newPhotos.length + pairImgCount;
+            var totalImgs = newCount + pairImgCount;
 
             // テキスト系と既存写真は即反映してモーダルを閉じ、新しい写真は裏で送る
             state.records[idx] = Object.assign({}, state.records[idx], { date: date, place: place, work: work, memo: memo, members: members, combustible: combustible, soil: soil, bags: bags, area: area, material: material, weeding: weeding, notice: notice });
@@ -2069,34 +2150,42 @@
             if (!weeding) delete state.records[idx].weeding;
             if (!notice) delete state.records[idx].notice;
             var record = state.records[idx];
-            if (keptPhotos.length > 0) record.photos = keptPhotos; else delete record.photos;
+            PH_CATS.forEach(function(cat) {
+                if (catKept[cat].length > 0) record[cat] = catKept[cat]; else delete record[cat];
+            });
             closeEdit();
             showToast(totalImgs > 0 ? '記録を更新しました！写真' + totalImgs + '枚は裏で送信中です' : '記録を更新しました！');
             setTimeout(function() { renderRecords(); updateHeaderCount(); saveToCloud(); }, 0);
 
             bgUploadDelta(totalImgs);
-            var photoResults = new Array(newPhotos.length);
-            var photoJobs = newPhotos.map(function(data, i) {
-                var uploadId = 'img_' + Date.now() + '_' + i + '_' + Math.random().toString(36).slice(2, 6);
-                return uploadImageToCloud(data, uploadId)
-                    .then(function(url) { photoResults[i] = url; })
-                    .catch(function() { photoResults[i] = null; })
-                    .then(function() { bgUploadDelta(-1); });
+            var catResults = { photos: [], photosDone: [], photosGov: [] };
+            var photoJobs = [];
+            PH_CATS.forEach(function(cat) {
+                catNew[cat].forEach(function(data, i) {
+                    var uploadId = 'img_' + Date.now() + '_' + cat + i + '_' + Math.random().toString(36).slice(2, 6);
+                    photoJobs.push(uploadImageToCloud(data, uploadId)
+                        .then(function(url) { catResults[cat].push(url); })
+                        .catch(function() { /* 失敗分は枚数差で通知 */ })
+                        .then(function() { bgUploadDelta(-1); }));
+                });
             });
             var pairsDone = uploadPairs(pairsToSend, null, null)
                 .then(function(cp) { bgUploadDelta(-pairImgCount); return cp; })
                 .catch(function() { bgUploadDelta(-pairImgCount); return []; });
             Promise.all([Promise.all(photoJobs), pairsDone]).then(function(res) {
-                var urls = photoResults.filter(Boolean);
                 var cleanPairs = res[1] || [];
                 if (state.records.indexOf(record) === -1) return; // 送信中に記録が削除された場合は紐付けない
-                var all = keptPhotos.concat(urls);
-                if (all.length > 0) record.photos = all; else delete record.photos;
+                var okCount = 0;
+                PH_CATS.forEach(function(cat) {
+                    okCount += catResults[cat].length;
+                    var all = catKept[cat].concat(catResults[cat]);
+                    if (all.length > 0) record[cat] = all; else delete record[cat];
+                });
                 if (cleanPairs.length > 0) record.pairs = cleanPairs; else delete record.pairs;
                 saveToCloud();
                 renderRecords();
                 if (totalImgs > 0) {
-                    var failed = newPhotos.length - urls.length;
+                    var failed = newCount - okCount;
                     showToast(failed > 0 ? '写真の送信が完了しました（' + failed + '枚は失敗）' : '写真の送信が完了しました');
                 }
             });
