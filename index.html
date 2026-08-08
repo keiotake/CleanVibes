@@ -637,7 +637,7 @@
                 <div class="stat-card"><div class="stat-num" id="st-year">0</div><div class="stat-label">今年の活動回数</div></div>
                 <div class="stat-card"><div class="stat-num" id="st-members">0</div><div class="stat-label">登録メンバー数</div></div>
                 <div class="stat-card"><div class="stat-num" id="st-participants">0</div><div class="stat-label">今年の延べ参加人数</div></div>
-                <div class="stat-card" style="grid-column:1/-1;"><div class="stat-num" id="st-labor">¥0</div><div class="stat-label">ボランティア人件費換算（1回90分×時給1,300円）</div></div>
+                <div class="stat-card" style="grid-column:1/-1;"><div class="stat-num" id="st-labor">¥0</div><div class="stat-label">ボランティア人件費換算（1回90分×時給1,200円）</div></div>
             </div>
             <div id="stats-labor-total-area"></div>
             <div id="stats-support-area"></div>
@@ -885,7 +885,7 @@
 
         // ボランティア人件費換算の前提
         const AVG_ACTIVITY_MINUTES  = 90;   // 1回あたり平均活動時間（分）
-        const VOLUNTEER_HOURLY_WAGE = 1300; // ボランティア1人あたり時給（円）
+        const VOLUNTEER_HOURLY_WAGE = 1200; // ボランティア1人あたり時給（円）
 
         // アプリ導入前（通算オフセット409回分）の延べ参加人数の概算
         const HISTORY_PHASE1_COUNT = 300; const HISTORY_PHASE1_AVG = 3; // 1〜300回目: 平均3人
@@ -966,6 +966,7 @@
             label.textContent = s === 'loading' ? '同期中...' : s === 'error' ? 'エラー' : '同期済み';
         }
 
+        var _cloudLoaded = false; // クラウドから正常に読み込めたか（写真キュー再開の前提条件）
         function loadFromCloud() {
             setSyncStatus('loading');
             return new Promise(function(resolve) {
@@ -976,6 +977,7 @@
                             if (!data.supports) data.supports = [];
                             if (!data.accounting) data.accounting = [];
                             state = data;
+                            _cloudLoaded = true;
                         }
                         setSyncStatus('ok');
                     } catch(e) { setSyncStatus('error'); }
@@ -1042,12 +1044,13 @@
             }
             _saveInFlight = false;
             if (_saveQueued) { _saveQueued = false; saveToCloud(); }
+            return okSave; // 写真キューが「保存を確認できたか」を見るために返す
         }
 
         // 裏で送信中の写真枚数バッジ＋ページを閉じる前の警告
         var bgUploadCount = 0;
-        function bgUploadDelta(d) {
-            bgUploadCount = Math.max(0, bgUploadCount + d);
+        function bgUploadShow(n) {
+            bgUploadCount = Math.max(0, n);
             var el = document.getElementById('bg-upload-badge');
             if (!el) {
                 el = document.createElement('div');
@@ -1059,30 +1062,258 @@
             else { el.style.display = 'none'; }
         }
         window.addEventListener('beforeunload', function(ev) {
-            if (bgUploadCount > 0) { ev.preventDefault(); ev.returnValue = '写真の送信が完了していません'; }
+            // キューはIndexedDBに残るので閉じても次回再開されるが、その場で送り切る方が早い
+            if (bgUploadCount > 0) { ev.preventDefault(); ev.returnValue = '写真を送信中です'; }
+        });
+
+        // ==========================================
+        // 写真送信キュー（IndexedDBに永続化）
+        //  - 送信中に画面が消えたり閉じられても、次回アプリを開いた時に自動で再開
+        //  - 同時送信は3枚まで（全枚数一斉より回線を有効に使えて総時間が短い）
+        //  - Drive反映済み(url確定)の項目は、記録への紐付け＋クラウド保存の検証成功を
+        //    確認してからキューを消す（途中で閉じられても写真が失われない）
+        // ==========================================
+        var UPQ_CONC = 3;
+        var _upqDb = null, _upqNoDb = false, _upqMem = {};
+        function upqOpen() {
+            return new Promise(function(res) {
+                if (_upqDb || _upqNoDb) return res(_upqDb);
+                if (!window.indexedDB) { _upqNoDb = true; return res(null); }
+                try {
+                    var req = indexedDB.open('cv_upload_queue', 1);
+                    req.onupgradeneeded = function() { req.result.createObjectStore('items', { keyPath: 'qid' }); };
+                    req.onsuccess = function() { _upqDb = req.result; res(_upqDb); };
+                    req.onerror = function() { _upqNoDb = true; res(null); };
+                } catch (e) { _upqNoDb = true; res(null); }
+            });
+        }
+        function upqAll() {
+            return upqOpen().then(function(db) {
+                if (!db) return Object.keys(_upqMem).map(function(k) { return _upqMem[k]; });
+                return new Promise(function(res) {
+                    try {
+                        var rq = db.transaction('items', 'readonly').objectStore('items').getAll();
+                        rq.onsuccess = function() { res(rq.result || []); };
+                        rq.onerror = function() { res([]); };
+                    } catch (e) { res([]); }
+                });
+            });
+        }
+        function upqPut(it) {
+            return upqOpen().then(function(db) {
+                if (!db) { _upqMem[it.qid] = it; return; }
+                return new Promise(function(res) {
+                    try {
+                        var tx = db.transaction('items', 'readwrite');
+                        tx.objectStore('items').put(it);
+                        tx.oncomplete = res;
+                        tx.onerror = function() { _upqMem[it.qid] = it; res(); };
+                    } catch (e) { _upqMem[it.qid] = it; res(); }
+                });
+            });
+        }
+        function upqDel(qid) {
+            return upqOpen().then(function(db) {
+                delete _upqMem[qid];
+                if (!db) return;
+                return new Promise(function(res) {
+                    try {
+                        var tx = db.transaction('items', 'readwrite');
+                        tx.objectStore('items').delete(qid);
+                        tx.oncomplete = res;
+                        tx.onerror = res;
+                    } catch (e) { res(); }
+                });
+            });
+        }
+        // items: [{recordId, target:{type:'cat',cat} | {type:'pair',idx,side,label}, data}]
+        function upqEnqueue(items) {
+            if (!items.length) return Promise.resolve();
+            var base = Date.now();
+            return Promise.all(items.map(function(it, i) {
+                it.qid = 'q' + base + '_' + i + '_' + Math.random().toString(36).slice(2, 6);
+                it.seq = base + i;
+                it.tries = 0;
+                return upqPut(it);
+            })).then(upqKick, upqKick);
+        }
+        // アップロード済みURLを記録に反映する（多重実行しても安全）。変更があればtrue
+        function upqAttach(it) {
+            var rec = null;
+            for (var i = 0; i < state.records.length; i++) {
+                if (state.records[i].id === it.recordId) { rec = state.records[i]; break; }
+            }
+            if (!rec || !it.url) return false; // 記録が削除済みなら紐付けず捨てる
+            var t = it.target;
+            if (t.type === 'cat') {
+                var arr = rec[t.cat] || (rec[t.cat] = []);
+                if (arr.indexOf(it.url) !== -1) return false;
+                arr.push(it.url);
+                return true;
+            }
+            if (t.type === 'pair') {
+                var pairs = rec.pairs || [];
+                var p = pairs[t.idx];
+                if (!p || (p.label || '') !== (t.label || '') || p[t.side]) {
+                    // 編集で位置が変わっていたら、同じラベルで空いている枠を探す
+                    p = null;
+                    for (var j = 0; j < pairs.length; j++) {
+                        if ((pairs[j].label || '') === (t.label || '') && !pairs[j][t.side]) { p = pairs[j]; break; }
+                    }
+                }
+                if (p && !p[t.side]) { p[t.side] = it.url; return true; }
+                return false;
+            }
+            return false;
+        }
+        // 送信中は画面が消えないようにする（対応ブラウザのみ・失敗しても害なし）
+        var _wakeLock = null;
+        function upqWake(on) {
+            try {
+                if (on && !_wakeLock && navigator.wakeLock) {
+                    navigator.wakeLock.request('screen').then(function(wl) {
+                        _wakeLock = wl;
+                        wl.addEventListener('release', function() { _wakeLock = null; });
+                    }).catch(function() {});
+                } else if (!on && _wakeLock) {
+                    _wakeLock.release().catch(function() {});
+                    _wakeLock = null;
+                }
+            } catch (e) {}
+        }
+        var _upqRunning = false, _upqAgain = false;
+        function upqKick() { upqRun(); }
+        async function upqRun() {
+            if (_upqRunning) { _upqAgain = true; return; }
+            if (!_cloudLoaded) return; // 読み込み失敗時に不完全なstateで保存しないための守り
+            _upqRunning = true;
+            upqWake(true);
+            var sentCount = 0, failedCount = 0, emptyRounds = 0, bailed = false;
+            try {
+                while (true) {
+                    _upqAgain = false;
+                    var items = await upqAll();
+                    var uploaded = items.filter(function(i) { return i.url; });
+                    var toSend = items.filter(function(i) { return !i.url; }).sort(function(a, b) { return a.seq - b.seq; });
+                    bgUploadShow(toSend.length);
+                    if (uploaded.length > 0) {
+                        var changed = false;
+                        uploaded.forEach(function(it) { if (upqAttach(it)) changed = true; });
+                        var canDrop = true;
+                        if (changed) {
+                            renderRecords();
+                            canDrop = (await saveToCloud()) === true;
+                        }
+                        if (canDrop) {
+                            for (var k = 0; k < uploaded.length; k++) await upqDel(uploaded[k].qid);
+                        }
+                    }
+                    if (toSend.length === 0) break;
+                    var batch = toSend.slice(0, UPQ_CONC);
+                    var okInBatch = 0;
+                    await Promise.all(batch.map(function(it) {
+                        return uploadImageToCloud(it.data, 'img_' + it.qid)
+                            .then(function(url) { it.url = url; delete it.data; okInBatch++; sentCount++; return upqPut(it); })
+                            .catch(function() {
+                                it.tries = (it.tries || 0) + 1;
+                                if (it.tries >= 3) { failedCount++; return upqDel(it.qid); }
+                                return upqPut(it);
+                            })
+                            .then(function() { bgUploadShow(bgUploadCount - 1); });
+                    }));
+                    if (okInBatch === 0) {
+                        emptyRounds++;
+                        if (emptyRounds >= 2) { // 電波が無いなど。残りは次回開いた時に持ち越す
+                            var left = (await upqAll()).filter(function(i) { return !i.url; }).length;
+                            if (left > 0) showToast('⚠️ 写真' + left + '枚が未送信です。次にアプリを開いた時に自動で再開します');
+                            bailed = true;
+                            break;
+                        }
+                        await new Promise(function(r) { setTimeout(r, 4000); });
+                    } else {
+                        emptyRounds = 0;
+                    }
+                }
+                if (!bailed) {
+                    // 送信しきったら、写真が入らなかった空のBefore/After枠を掃除
+                    if ((await upqAll()).length === 0) {
+                        var pruned = false;
+                        state.records.forEach(function(r) {
+                            if (!r.pairs) return;
+                            var np = r.pairs.filter(function(p) { return p.before || p.after; });
+                            if (np.length !== r.pairs.length) {
+                                pruned = true;
+                                if (np.length) r.pairs = np; else delete r.pairs;
+                            }
+                        });
+                        if (pruned) { renderRecords(); saveToCloud(); }
+                    }
+                    if (sentCount > 0 || failedCount > 0) {
+                        showToast(failedCount > 0 ? '写真の送信が完了しました（' + failedCount + '枚は失敗）' : '写真の送信が完了しました');
+                    }
+                }
+            } finally {
+                _upqRunning = false;
+                upqWake(false);
+                if (_upqAgain) upqRun();
+            }
+        }
+        // 前回送り残した写真があれば再開（初回読み込み成功後に呼ばれる）
+        async function upqResume() {
+            if (!_cloudLoaded) return;
+            var items = await upqAll();
+            if (items.length === 0) return;
+            var n = items.filter(function(i) { return !i.url; }).length;
+            if (n > 0) showToast('前回の写真' + n + '枚の送信を再開します');
+            upqRun();
+        }
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'visible' && bgUploadCount > 0) { upqWake(true); upqKick(); }
         });
 
         // ==========================================
         // PHOTOS
         // ==========================================
+        // 自動圧縮: 幅1200px・高さ1600pxに収めたうえで、それでも容量が大きい写真は
+        // 品質を段階的に下げて1枚あたり約300KB以下にする（送信時間の短縮のため）。
+        // 従来は幅しか見ておらず、縦長写真が縮小されないまま送られていた。
         function resizeImage(file, maxWidth, quality) {
             maxWidth = maxWidth || 1200;
-            quality = quality || 0.7;
+            var TARGET_LEN = 400000; // dataURLの文字数 ≒ バイナリ300KB相当
+            function encode(img, w0, h0) {
+                var canvas = document.createElement('canvas');
+                var scale = Math.min(1, maxWidth / w0, 1600 / h0);
+                var w = Math.round(w0 * scale), h = Math.round(h0 * scale);
+                canvas.width = w; canvas.height = h;
+                canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                var qs = quality ? [quality] : [0.72, 0.6, 0.5, 0.42];
+                var out = '';
+                for (var i = 0; i < qs.length; i++) {
+                    out = canvas.toDataURL('image/jpeg', qs[i]);
+                    if (out.length <= TARGET_LEN) break;
+                }
+                return out;
+            }
             return new Promise(function(resolve) {
-                var reader = new FileReader();
-                reader.onload = function(e) {
-                    var img = new Image();
-                    img.onload = function() {
-                        var canvas = document.createElement('canvas');
-                        var w = img.width, h = img.height;
-                        if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
-                        canvas.width = w; canvas.height = h;
-                        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-                        resolve(canvas.toDataURL('image/jpeg', quality));
+                // createImageBitmapの方が大きい写真のデコードが速い（未対応・失敗時は従来経路）
+                var p = window.createImageBitmap
+                    ? createImageBitmap(file, { imageOrientation: 'from-image' }).catch(function() { return null; })
+                    : Promise.resolve(null);
+                p.then(function(bmp) {
+                    if (bmp) {
+                        var out = encode(bmp, bmp.width, bmp.height);
+                        bmp.close();
+                        resolve(out);
+                        return;
+                    }
+                    var reader = new FileReader();
+                    reader.onload = function(e) {
+                        var img = new Image();
+                        img.onload = function() { resolve(encode(img, img.width, img.height)); };
+                        img.src = e.target.result;
                     };
-                    img.src = e.target.result;
-                };
-                reader.readAsDataURL(file);
+                    reader.readAsDataURL(file);
+                });
             });
         }
 
@@ -1278,33 +1509,6 @@
             };
             inp.click();
         }
-        // pairs内の新規写真(base64)をDriveへアップロードし、保存用の配列に整形して返す
-        async function uploadPairs(pairs, progressEl, btnEl) {
-            var jobs = [];
-            pairs.forEach(function(p, i) {
-                ['before', 'after'].forEach(function(side) {
-                    if (p[side] && p[side].data) jobs.push({ i: i, side: side });
-                });
-            });
-            if (jobs.length > 0) {
-                var msg = 'Before/After写真 ' + jobs.length + '枚を同時アップロード中...';
-                if (progressEl) { progressEl.style.display = 'block'; progressEl.textContent = msg; }
-                if (btnEl) btnEl.textContent = msg;
-                // 全枚数を同時に送る（従来は1枚ずつ直列で、枚数分の待ち時間が足し算になっていた）
-                await Promise.all(jobs.map(function(j, k) {
-                    var uploadId = 'pair_' + Date.now() + '_' + k + '_' + Math.random().toString(36).slice(2, 6);
-                    return uploadImageToCloud(pairs[j.i][j.side].data, uploadId)
-                        .then(function(url) { pairs[j.i][j.side] = { url: url }; })
-                        .catch(function() { showToast('Before/After写真のアップロードに失敗しました'); pairs[j.i][j.side] = null; });
-                }));
-            }
-            return pairs
-                .map(function(p) {
-                    return { label: (p.label || '').trim(), before: p.before && p.before.url ? p.before.url : null, after: p.after && p.after.url ? p.after.url : null };
-                })
-                .filter(function(p) { return p.before || p.after; });
-        }
-
         // ==========================================
         // 行政報告書（Word文書）生成
         // ==========================================
@@ -1831,39 +2035,30 @@
             pendingPairs = [];
             renderPairRows('f');
             toggleAddForm();
-            showToast(totalImgs > 0 ? '記録を追加しました！写真' + totalImgs + '枚は裏で送信中です' : '記録を追加しました！');
+            showToast(totalImgs > 0 ? '記録を追加しました！写真' + totalImgs + '枚は裏で送信中です（閉じても次回に自動再開）' : '記録を追加しました！');
             setTimeout(function() { renderRecords(); updateHeaderCount(); saveToCloud(); }, 0);
 
             if (totalImgs === 0) return;
-            bgUploadDelta(totalImgs);
-            var catResults = { photos: [], photosDone: [], photosGov: [] };
-            var photoJobs = [];
+            // Before/Afterは枠(ラベル)を先に記録へ載せ、写真URLはキューが後から埋める
+            var cleanPairs = [];
+            var items = [];
+            pairsToSend.forEach(function(p) {
+                var hasData = (p.before && p.before.data) || (p.after && p.after.data);
+                var hasUrl = (p.before && p.before.url) || (p.after && p.after.url);
+                if (!hasData && !hasUrl) return;
+                var cp = { label: (p.label || '').trim(), before: (p.before && p.before.url) || null, after: (p.after && p.after.url) || null };
+                var pi = cleanPairs.push(cp) - 1;
+                ['before', 'after'].forEach(function(side) {
+                    if (p[side] && p[side].data) items.push({ recordId: record.id, target: { type: 'pair', idx: pi, side: side, label: cp.label }, data: p[side].data });
+                });
+            });
+            if (cleanPairs.length > 0) record.pairs = cleanPairs;
             PH_CATS.forEach(function(cat) {
-                catSend[cat].forEach(function(data, i) {
-                    var uploadId = 'img_' + Date.now() + '_' + cat + i + '_' + Math.random().toString(36).slice(2, 6);
-                    photoJobs.push(uploadImageToCloud(data, uploadId)
-                        .then(function(url) { catResults[cat].push(url); })
-                        .catch(function() { /* 失敗分は枚数差で通知 */ })
-                        .then(function() { bgUploadDelta(-1); }));
+                catSend[cat].forEach(function(data) {
+                    items.push({ recordId: record.id, target: { type: 'cat', cat: cat }, data: data });
                 });
             });
-            var pairsDone = uploadPairs(pairsToSend, null, null)
-                .then(function(cp) { bgUploadDelta(-pairImgCount); return cp; })
-                .catch(function() { bgUploadDelta(-pairImgCount); return []; });
-            Promise.all([Promise.all(photoJobs), pairsDone]).then(function(res) {
-                var cleanPairs = res[1] || [];
-                if (state.records.indexOf(record) === -1) return; // 送信中に記録が削除された場合は紐付けない
-                var okCount = 0;
-                PH_CATS.forEach(function(cat) {
-                    okCount += catResults[cat].length;
-                    if (catResults[cat].length > 0) record[cat] = catResults[cat];
-                });
-                if (cleanPairs.length > 0) record.pairs = cleanPairs;
-                if (okCount > 0 || cleanPairs.length > 0) { saveToCloud(); renderRecords(); }
-                var pairOk = cleanPairs.reduce(function(n, p) { return n + (p.before ? 1 : 0) + (p.after ? 1 : 0); }, 0);
-                var failed = totalImgs - okCount - pairOk;
-                showToast(failed > 0 ? '写真の送信が完了しました（' + failed + '枚は失敗）' : '写真の送信が完了しました');
-            });
+            upqEnqueue(items);
         }
 
         function checkDeletePassword() {
@@ -2153,42 +2348,30 @@
             PH_CATS.forEach(function(cat) {
                 if (catKept[cat].length > 0) record[cat] = catKept[cat]; else delete record[cat];
             });
-            closeEdit();
-            showToast(totalImgs > 0 ? '記録を更新しました！写真' + totalImgs + '枚は裏で送信中です' : '記録を更新しました！');
-            setTimeout(function() { renderRecords(); updateHeaderCount(); saveToCloud(); }, 0);
-
-            bgUploadDelta(totalImgs);
-            var catResults = { photos: [], photosDone: [], photosGov: [] };
-            var photoJobs = [];
+            // Before/Afterは枠(ラベル・既存URL)を先に記録へ反映し、新しい写真はキューが後から埋める
+            var cleanPairs = [];
+            var items = [];
+            pairsToSend.forEach(function(p) {
+                var hasData = (p.before && p.before.data) || (p.after && p.after.data);
+                var hasUrl = (p.before && p.before.url) || (p.after && p.after.url);
+                if (!hasData && !hasUrl) return;
+                var cp = { label: (p.label || '').trim(), before: (p.before && p.before.url) || null, after: (p.after && p.after.url) || null };
+                var pi = cleanPairs.push(cp) - 1;
+                ['before', 'after'].forEach(function(side) {
+                    if (p[side] && p[side].data) items.push({ recordId: record.id, target: { type: 'pair', idx: pi, side: side, label: cp.label }, data: p[side].data });
+                });
+            });
+            if (cleanPairs.length > 0) record.pairs = cleanPairs; else delete record.pairs;
             PH_CATS.forEach(function(cat) {
-                catNew[cat].forEach(function(data, i) {
-                    var uploadId = 'img_' + Date.now() + '_' + cat + i + '_' + Math.random().toString(36).slice(2, 6);
-                    photoJobs.push(uploadImageToCloud(data, uploadId)
-                        .then(function(url) { catResults[cat].push(url); })
-                        .catch(function() { /* 失敗分は枚数差で通知 */ })
-                        .then(function() { bgUploadDelta(-1); }));
+                catNew[cat].forEach(function(data) {
+                    items.push({ recordId: record.id, target: { type: 'cat', cat: cat }, data: data });
                 });
             });
-            var pairsDone = uploadPairs(pairsToSend, null, null)
-                .then(function(cp) { bgUploadDelta(-pairImgCount); return cp; })
-                .catch(function() { bgUploadDelta(-pairImgCount); return []; });
-            Promise.all([Promise.all(photoJobs), pairsDone]).then(function(res) {
-                var cleanPairs = res[1] || [];
-                if (state.records.indexOf(record) === -1) return; // 送信中に記録が削除された場合は紐付けない
-                var okCount = 0;
-                PH_CATS.forEach(function(cat) {
-                    okCount += catResults[cat].length;
-                    var all = catKept[cat].concat(catResults[cat]);
-                    if (all.length > 0) record[cat] = all; else delete record[cat];
-                });
-                if (cleanPairs.length > 0) record.pairs = cleanPairs; else delete record.pairs;
-                saveToCloud();
-                renderRecords();
-                if (totalImgs > 0) {
-                    var failed = newCount - okCount;
-                    showToast(failed > 0 ? '写真の送信が完了しました（' + failed + '枚は失敗）' : '写真の送信が完了しました');
-                }
-            });
+
+            closeEdit();
+            showToast(totalImgs > 0 ? '記録を更新しました！写真' + totalImgs + '枚は裏で送信中です（閉じても次回に自動再開）' : '記録を更新しました！');
+            setTimeout(function() { renderRecords(); updateHeaderCount(); saveToCloud(); }, 0);
+            upqEnqueue(items);
         }
 
         // ==========================================
@@ -2760,7 +2943,7 @@
             document.head.appendChild(script);
         }, 30000);
 
-        loadFromCloud();
+        loadFromCloud().then(upqResume);
     </script>
 </body>
 </html>
