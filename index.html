@@ -566,7 +566,7 @@
                     <div class="form-grid">
                         <div class="form-group full"><label>可燃物の回収場所（行政報告用）</label><input id="f-combustible" type="text" list="dl-combustible" placeholder="例: 伊豆伊東高校スロープ手前"></div>
                         <div class="form-group full"><label>土砂の回収場所（行政報告用）</label><input id="f-soil" type="text" list="dl-soil" placeholder="例: 〇〇交差点脇に土嚢袋で仮置き"></div>
-                        <div class="form-group full"><label>回収量（行政報告用）</label><input id="f-bags" type="text" placeholder="例: ガラ袋3袋・土嚢袋2袋"></div>
+                        <div class="form-group full"><label>回収量（行政報告用）</label><div style="display:flex;gap:10px;"><select id="f-bags-gara" style="flex:1;"></select><select id="f-bags-dono" style="flex:1;"></select></div></div>
                         <div class="form-group full"><label>作業範囲（行政報告用）</label><input id="f-area" type="text" placeholder="例: 〇〇交差点～△△バス停 約200m"></div>
                         <div class="form-group full"><label>支給材料の使用量（行政報告用）</label><input id="f-material" type="text" placeholder="例: マサファルト3袋半 使用"></div>
                         <div class="form-group full"><label>防草の工程・材料（行政報告用）</label><textarea id="f-weeding" placeholder="例: モルタル／散水パッチ／固まる砂による防草。物理除去→焼却→発芽抑制→アルカリ水散布"></textarea></div>
@@ -789,7 +789,7 @@
             <div class="form-grid">
                 <div class="form-group full"><label>可燃物の回収場所（行政報告用）</label><input id="e-combustible" type="text" list="dl-combustible" placeholder="例: 伊豆伊東高校スロープ手前"></div>
                 <div class="form-group full"><label>土砂の回収場所（行政報告用）</label><input id="e-soil" type="text" list="dl-soil" placeholder="例: 〇〇交差点脇に土嚢袋で仮置き"></div>
-                <div class="form-group full"><label>回収量（行政報告用）</label><input id="e-bags" type="text" placeholder="例: ガラ袋3袋・土嚢袋2袋"></div>
+                <div class="form-group full"><label>回収量（行政報告用）</label><div style="display:flex;gap:10px;"><select id="e-bags-gara" style="flex:1;"></select><select id="e-bags-dono" style="flex:1;"></select></div></div>
                 <div class="form-group full"><label>作業範囲（行政報告用）</label><input id="e-area" type="text" placeholder="例: 〇〇交差点～△△バス停 約200m"></div>
                 <div class="form-group full"><label>支給材料の使用量（行政報告用）</label><input id="e-material" type="text" placeholder="例: マサファルト3袋半 使用"></div>
                 <div class="form-group full"><label>防草の工程・材料（行政報告用）</label><textarea id="e-weeding"></textarea></div>
@@ -1372,7 +1372,41 @@
             });
             populateSupportItemPresets();
             onSupportTypeChange();
+            populateBagSelects();
         });
+
+        // 回収量プルダウン（ガラ袋・土嚢袋 各1〜20袋）。保存は従来通り
+        // 「ガラ袋3袋・土嚢袋2袋」形式の文字列なので、過去データや報告書生成はそのまま動く
+        var _bagsExtra = { f: '', e: '' }; // プルダウン化前の自由記述を編集時に消さないための退避
+        function populateBagSelects() {
+            [['f-bags-gara', 'ガラ袋'], ['f-bags-dono', '土嚢袋'], ['e-bags-gara', 'ガラ袋'], ['e-bags-dono', '土嚢袋']].forEach(function(s) {
+                var el = document.getElementById(s[0]);
+                if (!el) return;
+                var html = '<option value="">' + s[1] + '：なし</option>';
+                for (var i = 1; i <= 20; i++) html += '<option value="' + i + '">' + s[1] + ' ' + i + '袋</option>';
+                el.innerHTML = html;
+            });
+        }
+        function composeBags(prefix) {
+            var parts = [];
+            var g = document.getElementById(prefix + '-bags-gara').value;
+            var d = document.getElementById(prefix + '-bags-dono').value;
+            if (g) parts.push('ガラ袋' + g + '袋');
+            if (d) parts.push('土嚢袋' + d + '袋');
+            if (_bagsExtra[prefix]) parts.push(_bagsExtra[prefix]);
+            return parts.join('・');
+        }
+        function setBagSelects(prefix, bags) {
+            var s = bags || '', out = s;
+            var g = s.match(/ガラ袋(\d+)袋/), d = s.match(/土嚢袋(\d+)袋/);
+            var gv = (g && +g[1] >= 1 && +g[1] <= 20) ? g[1] : '';
+            var dv = (d && +d[1] >= 1 && +d[1] <= 20) ? d[1] : '';
+            if (gv) out = out.replace(g[0], '');
+            if (dv) out = out.replace(d[0], '');
+            document.getElementById(prefix + '-bags-gara').value = gv;
+            document.getElementById(prefix + '-bags-dono').value = dv;
+            _bagsExtra[prefix] = out.replace(/・+/g, '・').replace(/^・|・$/g, '').trim();
+        }
 
         async function handleAddPhotos(e, cat) {
             var arr = phPending(cat);
@@ -2015,7 +2049,7 @@
             var memo = document.getElementById('f-memo').value.trim();
             var combustible = document.getElementById('f-combustible').value.trim();
             var soil = document.getElementById('f-soil').value.trim();
-            var bags = document.getElementById('f-bags').value.trim();
+            var bags = composeBags('f');
             var area = document.getElementById('f-area').value.trim();
             var material = document.getElementById('f-material').value.trim();
             var weeding = document.getElementById('f-weeding').value.trim();
@@ -2046,7 +2080,8 @@
 
             // 押した瞬間に画面を返す：先にフォームを閉じてトーストを出し、
             // 重い一覧再描画とクラウド保存は直後のタイミングに回す
-            ['f-date', 'f-place', 'f-work', 'f-memo', 'f-combustible', 'f-soil', 'f-bags', 'f-area', 'f-material', 'f-weeding', 'f-notice'].forEach(function(id) { document.getElementById(id).value = ''; });
+            ['f-date', 'f-place', 'f-work', 'f-memo', 'f-combustible', 'f-soil', 'f-area', 'f-material', 'f-weeding', 'f-notice'].forEach(function(id) { document.getElementById(id).value = ''; });
+            setBagSelects('f', '');
             document.querySelectorAll('#member-checkboxes input').forEach(function(c) { c.checked = false; });
             pendingPhotos = []; pendingPhotosDone = []; pendingPhotosGov = [];
             PH_CATS.forEach(function(cat) { document.getElementById('f-photo-preview' + phSuffix(cat)).innerHTML = ''; });
@@ -2296,7 +2331,7 @@
             document.getElementById('e-memo').value = r.memo || '';
             document.getElementById('e-combustible').value = r.combustible || '';
             document.getElementById('e-soil').value = r.soil || '';
-            document.getElementById('e-bags').value = r.bags || '';
+            setBagSelects('e', r.bags || '');
             document.getElementById('e-area').value = r.area || '';
             document.getElementById('e-material').value = r.material || '';
             document.getElementById('e-weeding').value = r.weeding || '';
@@ -2329,7 +2364,7 @@
             var memo = document.getElementById('e-memo').value.trim();
             var combustible = document.getElementById('e-combustible').value.trim();
             var soil = document.getElementById('e-soil').value.trim();
-            var bags = document.getElementById('e-bags').value.trim();
+            var bags = composeBags('e');
             var area = document.getElementById('e-area').value.trim();
             var material = document.getElementById('e-material').value.trim();
             var weeding = document.getElementById('e-weeding').value.trim();
