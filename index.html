@@ -1000,6 +1000,17 @@
             });
         }
 
+        // POSTが宙吊りになるのを防ぐ。モバイルでは画面オフや電波切替の瞬間に
+        // fetchがエラーにもならず永久に返らないことがあり、その1回が
+        // 保存や写真キュー全体を止めてしまうため、必ず時間内に成否を確定させる。
+        function postWithTimeout(body, ms) {
+            var ctrl = window.AbortController ? new AbortController() : null;
+            var timer = ctrl ? setTimeout(function() { ctrl.abort(); }, ms) : null;
+            var opts = { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: body };
+            if (ctrl) opts.signal = ctrl.signal;
+            return fetch(GAS_URL, opts).finally(function() { if (timer) clearTimeout(timer); });
+        }
+
         // 保存後の検証用にクラウドの現状を読み直す(JSONP)
         function fetchCloudSnapshot() {
             return new Promise(function(res, rej) {
@@ -1031,7 +1042,7 @@
                     var sentRev = state.rev;
                     var params = new URLSearchParams();
                     params.append('data', JSON.stringify(state));
-                    await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
+                    await postWithTimeout(params.toString(), 30000);
                     var snap = await fetchCloudSnapshot();
                     okSave = !!(snap && snap.rev === sentRev);
                 } catch (e) { okSave = false; }
@@ -1080,10 +1091,13 @@
                 if (_upqDb || _upqNoDb) return res(_upqDb);
                 if (!window.indexedDB) { _upqNoDb = true; return res(null); }
                 try {
+                    // iOSでopenが成功も失敗も返さないまま固まる持病があるため、3秒で見切る
                     var req = indexedDB.open('cv_upload_queue', 1);
+                    var settled = false;
+                    var giveUp = setTimeout(function() { if (!settled) { settled = true; _upqNoDb = true; res(null); } }, 3000);
                     req.onupgradeneeded = function() { req.result.createObjectStore('items', { keyPath: 'qid' }); };
-                    req.onsuccess = function() { _upqDb = req.result; res(_upqDb); };
-                    req.onerror = function() { _upqNoDb = true; res(null); };
+                    req.onsuccess = function() { if (settled) return; settled = true; clearTimeout(giveUp); _upqDb = req.result; res(_upqDb); };
+                    req.onerror = function() { if (settled) return; settled = true; clearTimeout(giveUp); _upqNoDb = true; res(null); };
                 } catch (e) { _upqNoDb = true; res(null); }
             });
         }
@@ -1212,7 +1226,11 @@
                     var batch = toSend.slice(0, UPQ_CONC);
                     var okInBatch = 0;
                     await Promise.all(batch.map(function(it) {
-                        return uploadImageToCloud(it.data, 'img_' + it.qid)
+                        // 1枚が万一宙吊りになってもキュー全体を道連れにしないための保険
+                        return Promise.race([
+                            uploadImageToCloud(it.data, 'img_' + it.qid),
+                            new Promise(function(_, rej) { setTimeout(function() { rej('タイムアウト'); }, 180000); })
+                        ])
                             .then(function(url) { it.url = url; delete it.data; okInBatch++; sentCount++; return upqPut(it); })
                             .catch(function() {
                                 it.tries = (it.tries || 0) + 1;
@@ -1324,7 +1342,7 @@
                     params.append('action', 'upload_image');
                     params.append('image', base64Data);
                     params.append('uploadId', uploadId);
-                    await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
+                    await postWithTimeout(params.toString(), 45000);
                 } catch(e) { reject('送信失敗'); return; }
                 var attempts = 0, maxAttempts = 60;
                 var poll = function() {
