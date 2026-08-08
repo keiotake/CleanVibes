@@ -139,8 +139,9 @@
         .form-group { display: flex; flex-direction: column; gap: 6px; }
         .form-group.full { grid-column: 1 / -1; }
         label { font-size: 0.74rem; font-weight: 700; color: var(--ink-soft); letter-spacing: 0.1em; }
-        input, textarea, select { padding: 12px 14px; border: 1px solid var(--hair-dark); border-radius: 11px; font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 0.95rem; color: var(--ink); background: #FBFDFE; outline: none; transition: all 0.22s; }
+        input, textarea, select { padding: 12px 14px; border: 1px solid var(--hair-dark); border-radius: 11px; font-family: 'Zen Kaku Gothic New', sans-serif; font-size: 0.95rem; color: var(--ink); background: #FBFDFE; outline: none; transition: border-color 0.22s, box-shadow 0.22s; }
         input:focus, textarea:focus, select:focus { border-color: var(--ocean); box-shadow: 0 0 0 3px rgba(14,160,230,0.14); }
+        select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%236b7a86' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 13px center; background-size: 12px 8px; padding-right: 36px; }
         textarea { resize: vertical; min-height: 70px; }
         .form-actions { margin-top: 18px; display: flex; }
         .add-toggle-btn {
@@ -362,6 +363,7 @@
             .bottom-nav button.active::before { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 28px; height: 3px; border-radius: 0 0 3px 3px; background: var(--gradient-vivid); }
             .bottom-nav button.active .nav-icon { transform: scale(1.12); }
             input, textarea, select { font-size: 1rem; padding: 12px 14px; }
+            select { padding-right: 36px; }
             .form-grid { grid-template-columns: 1fr; }
             .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
             .impact-grid { grid-template-columns: 1fr 1fr 1fr; }
@@ -659,7 +661,7 @@
                 <div class="form-grid">
                     <div class="form-group">
                         <label>種別 *</label>
-                        <select id="sp-type" onchange="onSupportTypeChange()" style="padding:11px 14px;border:1.5px solid var(--gray-200);border-radius:10px;font-family:'Zen Kaku Gothic New',sans-serif;font-size:1rem;">
+                        <select id="sp-type" onchange="onSupportTypeChange()">
                             <option value="money">金銭</option>
                             <option value="item">物品</option>
                         </select>
@@ -669,7 +671,7 @@
                 <div class="form-grid" id="sp-money-fields">
                     <div class="form-group">
                         <label>区分（金銭）</label>
-                        <select id="sp-category" style="padding:11px 14px;border:1.5px solid var(--gray-200);border-radius:10px;font-family:'Zen Kaku Gothic New',sans-serif;font-size:1rem;">
+                        <select id="sp-category">
                             <option value="寄付金">寄付金</option>
                             <option value="助成金">助成金</option>
                         </select>
@@ -678,12 +680,12 @@
                 <div class="form-grid" id="sp-item-fields" style="display:none;">
                     <div class="form-group">
                         <label>品名プリセット（選ぶと相当額が自動入力）</label>
-                        <select id="sp-item-preset" onchange="applyItemPreset()" style="padding:11px 14px;border:1.5px solid var(--gray-200);border-radius:10px;font-family:'Zen Kaku Gothic New',sans-serif;font-size:1rem;"></select>
+                        <select id="sp-item-preset" onchange="applyItemPreset()"></select>
                     </div>
                     <div class="form-group"><label>数量（<span id="sp-qty-unit">個</span>）</label><input id="sp-qty" type="number" min="1" step="1" value="1" oninput="applyItemPreset()"></div>
                     <div class="form-group full">
                         <label>区分（物品）</label>
-                        <select id="sp-item-category" style="padding:11px 14px;border:1.5px solid var(--gray-200);border-radius:10px;font-family:'Zen Kaku Gothic New',sans-serif;font-size:1rem;">
+                        <select id="sp-item-category">
                             <option value="物品応援">物品応援（市民）</option>
                             <option value="代表提供">メンバー提供私財</option>
                             <option value="行政支給">行政支給</option>
@@ -709,7 +711,7 @@
                     <div class="form-group"><label>日付 *</label><input id="ac-date" type="date"></div>
                     <div class="form-group">
                         <label>種別 *</label>
-                        <select id="ac-type" style="padding:11px 14px;border:1.5px solid var(--gray-200);border-radius:10px;font-family:'Zen Kaku Gothic New',sans-serif;font-size:1rem;">
+                        <select id="ac-type">
                             <option value="income">収入</option>
                             <option value="expense">支出</option>
                         </select>
