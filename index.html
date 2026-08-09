@@ -1197,7 +1197,7 @@
                 }
             } catch (e) {}
         }
-        var _upqRunning = false, _upqAgain = false;
+        var _upqRunning = false, _upqAgain = false, _upqWasHidden = false;
         function upqKick() { upqRun(); }
         async function upqRun() {
             if (_upqRunning) { _upqAgain = true; return; }
@@ -1215,18 +1215,17 @@
                     if (uploaded.length > 0) {
                         var changed = false;
                         uploaded.forEach(function(it) { if (upqAttach(it)) changed = true; });
-                        var canDrop = true;
-                        if (changed) {
-                            renderRecords();
-                            canDrop = (await saveToCloud()) === true;
-                        }
-                        if (canDrop) {
+                        if (changed) renderRecords();
+                        // 記録に反映済みに見えても、クラウド保存の成功を確認できるまでは
+                        // キューから消さない（確認前に消すと保存失敗時に紐付けが失われる）
+                        if ((await saveToCloud()) === true) {
                             for (var k = 0; k < uploaded.length; k++) await upqDel(uploaded[k].qid);
                         }
                     }
                     if (toSend.length === 0) break;
                     var batch = toSend.slice(0, UPQ_CONC);
                     var okInBatch = 0;
+                    _upqWasHidden = false; // このバッチ中に画面が隠れたかの記録をリセット
                     await Promise.all(batch.map(function(it) {
                         // 1枚が万一宙吊りになってもキュー全体を道連れにしないための保険
                         return Promise.race([
@@ -1235,17 +1234,24 @@
                         ])
                             .then(function(url) { it.url = url; delete it.data; okInBatch++; sentCount++; return upqPut(it); })
                             .catch(function() {
-                                it.tries = (it.tries || 0) + 1;
-                                if (it.tries >= 3) { failedCount++; return upqDel(it.qid); }
+                                // 画面オフ・アプリ切替による中断はiOSがJSを止めるだけなので
+                                // 「失敗」に数えない（中断エラーは復帰後に届くため、
+                                // このバッチ中に一度でも画面が隠れたかで判定する）
+                                if (!_upqWasHidden && document.visibilityState !== 'hidden') it.tries = (it.tries || 0) + 1;
+                                if (it.tries >= 6) { failedCount++; return upqDel(it.qid); }
                                 return upqPut(it);
                             })
                             .then(function() { bgUploadShow(bgUploadCount - 1); });
                     }));
                     if (okInBatch === 0) {
                         emptyRounds++;
-                        if (emptyRounds >= 2) { // 電波が無いなど。残りは次回開いた時に持ち越す
+                        if (emptyRounds >= 2) { // 電波が無いなど。残りは持ち越して後で自動再開
                             var left = (await upqAll()).filter(function(i) { return !i.url; }).length;
-                            if (left > 0) showToast('⚠️ 写真' + left + '枚が未送信です。次にアプリを開いた時に自動で再開します');
+                            if (left > 0) {
+                                bgUploadShow(left);
+                                showToast('⚠️ 写真' + left + '枚が未送信です。しばらくして自動で再開します');
+                                setTimeout(upqKick, 30000);
+                            }
                             bailed = true;
                             break;
                         }
@@ -1288,7 +1294,8 @@
             upqRun();
         }
         document.addEventListener('visibilitychange', function() {
-            if (document.visibilityState === 'visible' && bgUploadCount > 0) { upqWake(true); upqKick(); }
+            if (document.visibilityState === 'hidden') { _upqWasHidden = true; return; }
+            if (bgUploadCount > 0) { upqWake(true); upqKick(); }
         });
 
         // ==========================================
