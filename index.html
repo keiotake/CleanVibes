@@ -256,8 +256,10 @@
         .photo-input-btn:hover, .photo-input-btn:active { background: var(--sky); transform: translateY(-1px); }
         .photo-input-btn input { display: none; }
         .photo-preview { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-        .photo-preview-item { position: relative; width: 80px; height: 80px; border-radius: 11px; overflow: hidden; border: 1px solid var(--hair-dark); }
+        .photo-preview-item { width: 108px; }
+        .photo-preview-item .photo-thumb { position: relative; width: 100%; height: 80px; border-radius: 11px; overflow: hidden; border: 1px solid var(--hair-dark); }
         .photo-preview-item img { width: 100%; height: 100%; object-fit: cover; }
+        .photo-memo-input { width: 100%; margin-top: 4px; padding: 6px 8px; font-size: 0.75rem; border-radius: 8px; }
         .photo-preview-item .remove-photo { position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; border-radius: 50%; background: rgba(15,42,57,0.78); color: #fff; border: none; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; }
         .photo-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
         .photo-grid img { width: 124px; height: 92px; object-fit: cover; border-radius: 11px; cursor: pointer; transition: all 0.22s; border: 1px solid var(--hair); }
@@ -874,6 +876,7 @@
         function phEditExisting(cat) { return cat === 'photosDone' ? editExistingPhotosDone : cat === 'photosGov' ? editExistingPhotosGov : editExistingPhotos; }
         let pendingPairs = [];   // 追加フォームのBefore/After（{label, before:{data|url}, after:{data|url}}）
         let editPairs = [];      // 編集モーダルのBefore/After
+        let editExMemos = { photos: [], photosDone: [], photosGov: [] }; // 既存写真のメモ（編集用）
 
         // ==========================================
         // 活動回数オフセット（アプリ導入前の実績を加算）
@@ -1165,6 +1168,10 @@
                 var arr = rec[t.cat] || (rec[t.cat] = []);
                 if (arr.indexOf(it.url) !== -1) return false;
                 arr.push(it.url);
+                if (it.memo) {
+                    rec.photoMemos = rec.photoMemos || {};
+                    rec.photoMemos[it.url] = it.memo;
+                }
                 return true;
             }
             if (t.type === 'pair') {
@@ -1422,13 +1429,14 @@
             var files = [...e.target.files].slice(0, 5 - arr.filter(Boolean).length);
             for (var file of files) {
                 var base64 = await resizeImage(file);
-                arr.push(base64);
+                arr.push({ data: base64, memo: '' });
             }
             renderAddPhotoPreview(cat);
             e.target.value = '';
         }
 
         function removeAddPhoto(cat, idx) { phPending(cat)[idx] = null; renderAddPhotoPreview(cat); }
+        function escAttr(s) { return String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
 
         function renderAddPhotoPreview(cat) {
             if (cat === undefined) { PH_CATS.forEach(renderAddPhotoPreview); return; }
@@ -1438,7 +1446,8 @@
                 if (!p) return;
                 var div = document.createElement('div');
                 div.className = 'photo-preview-item';
-                div.innerHTML = '<img src="' + p + '"><button class="remove-photo" onclick="removeAddPhoto(\'' + cat + '\',' + i + ')">✕</button>';
+                div.innerHTML = '<div class="photo-thumb"><img src="' + p.data + '"><button class="remove-photo" onclick="removeAddPhoto(\'' + cat + '\',' + i + ')">✕</button></div>' +
+                    '<input type="text" class="photo-memo-input" placeholder="メモ" value="' + escAttr(p.memo) + '" oninput="phPending(\'' + cat + '\')[' + i + '].memo = this.value">';
                 preview.appendChild(div);
             });
         }
@@ -1447,7 +1456,7 @@
             var ex = phEditExisting(cat), pd = phEditPending(cat);
             var remaining = 5 - ex.filter(Boolean).length - pd.filter(Boolean).length;
             var files = [...e.target.files].slice(0, remaining);
-            for (var file of files) { var base64 = await resizeImage(file); pd.push(base64); }
+            for (var file of files) { var base64 = await resizeImage(file); pd.push({ data: base64, memo: '' }); }
             renderEditPhotoPreview(cat);
             e.target.value = '';
         }
@@ -1464,7 +1473,8 @@
                 if (!url) return;
                 var div = document.createElement('div');
                 div.className = 'photo-preview-item';
-                div.innerHTML = '<img src="' + url + '"><button class="remove-photo" onclick="removeEditExistingPhoto(\'' + cat + '\',' + i + ')">✕</button>';
+                div.innerHTML = '<div class="photo-thumb"><img src="' + url + '"><button class="remove-photo" onclick="removeEditExistingPhoto(\'' + cat + '\',' + i + ')">✕</button></div>' +
+                    '<input type="text" class="photo-memo-input" placeholder="メモ" value="' + escAttr(editExMemos[cat][i]) + '" oninput="editExMemos[\'' + cat + '\'][' + i + '] = this.value">';
                 existing.appendChild(div);
             });
             var preview = document.getElementById('e-photo-preview' + sfx);
@@ -1473,7 +1483,8 @@
                 if (!p) return;
                 var div = document.createElement('div');
                 div.className = 'photo-preview-item';
-                div.innerHTML = '<img src="' + p + '"><button class="remove-photo" onclick="removeEditPendingPhoto(\'' + cat + '\',' + i + ')">✕</button>';
+                div.innerHTML = '<div class="photo-thumb"><img src="' + p.data + '"><button class="remove-photo" onclick="removeEditPendingPhoto(\'' + cat + '\',' + i + ')">✕</button></div>' +
+                    '<input type="text" class="photo-memo-input" placeholder="メモ" value="' + escAttr(p.memo) + '" oninput="phEditPending(\'' + cat + '\')[' + i + '].memo = this.value">';
                 preview.appendChild(div);
             });
         }
@@ -1702,9 +1713,17 @@
             var notices = [];
             recs.forEach(function(r) { if (r.notice) notices.push(fmtDateJP(r.date) + '　' + r.place + '：' + r.notice); });
             var govPhotoCount = recs.reduce(function(n, r) { return n + ((r.photosGov || []).length); }, 0);
-            if (notices.length || govPhotoCount > 0) {
+            var govMemos = [];
+            recs.forEach(function(r) {
+                (r.photosGov || []).forEach(function(u) {
+                    var mm = (r.photoMemos || {})[u];
+                    if (mm) govMemos.push(mm);
+                });
+            });
+            if (notices.length || govMemos.length || govPhotoCount > 0) {
                 lines.push('【気づき・危険箇所のご報告】');
                 notices.forEach(function(v) { lines.push('・' + v); });
+                govMemos.forEach(function(v) { lines.push('・' + v); });
                 if (govPhotoCount > 0) lines.push('（該当箇所の写真は添付資料をご参照ください）');
                 lines.push('');
             }
@@ -1910,24 +1929,43 @@
                         ps.addText('→', { x: 4.58, y: 2.95, w: 0.85, h: 0.6, fontSize: 30, bold: true, color: RP_NAVY, align: 'center', fontFace: 'Meiryo' });
                     }
 
-                    // ---- 活動の様子（2×2グリッド） ----
+                    // ---- 活動の様子（枚数に応じて枠を変える。縦写真が小さくならないように、
+                    //      1枚なら全面・2枚なら半分ずつ・3〜4枚で2×2グリッド） ----
                     PH_CATS.forEach(function(cat) {
-                        var photos = (r[cat] || []).slice(0, 4).map(function(u) { return imgData.get(u); }).filter(Boolean);
+                        var catUrls = (r[cat] || []).slice(0, 4);
+                        var photos = catUrls.map(function(u) {
+                            var d2 = imgData.get(u);
+                            return d2 ? { d: d2, memo: (r.photoMemos || {})[u] || '' } : null;
+                        }).filter(Boolean);
                         var isGov = (cat === 'photosGov');
                         if (!photos.length && !(isGov && r.notice)) return;
                         var gs = pptx.addSlide();
                         rpHeader(gs, head + '　' + (isGov ? '行政への対応依頼箇所' : PH_LABELS[cat]));
-                        var top = 1.05, rowH = 2.1;
+                        var top = 1.05;
                         if (isGov && r.notice) {
                             gs.addText('気づき・危険箇所：' + r.notice, { x: 0.4, y: 0.88, w: 9.2, h: 0.55, fontSize: 12, bold: true, color: RP_NAVY, fontFace: 'Meiryo', valign: 'top' });
-                            top = 1.5; rowH = 1.9;
+                            top = 1.5;
                         }
-                        var cells = [[0.4, top], [5.25, top], [0.4, top + rowH + 0.15], [5.25, top + rowH + 0.15]];
-                        photos.forEach(function(d2, qi) {
+                        var bottom = 5.35;
+                        var cells;
+                        if (photos.length === 1) {
+                            cells = [[0.4, top, 9.2, bottom - top]];
+                        } else if (photos.length === 2) {
+                            cells = [[0.4, top, 4.5, bottom - top], [5.1, top, 4.5, bottom - top]];
+                        } else {
+                            var rowH = (bottom - top - 0.15) / 2;
+                            cells = [[0.4, top, 4.35, rowH], [5.25, top, 4.35, rowH], [0.4, top + rowH + 0.15, 4.35, rowH], [5.25, top + rowH + 0.15, 4.35, rowH]];
+                        }
+                        photos.forEach(function(o, qi) {
                             var pos = cells[qi];
-                            gs.addShape('rect', { x: pos[0], y: pos[1], w: 4.35, h: rowH, fill: { color: 'F4F6F8' }, line: { color: RP_LINE, width: 1 } });
-                            var f2 = rpFit({ x: pos[0] + 0.06, y: pos[1] + 0.06, w: 4.23, h: rowH - 0.12 }, d2.w, d2.h);
-                            gs.addImage({ data: d2.data, x: f2.x, y: f2.y, w: f2.w, h: f2.h });
+                            gs.addShape('rect', { x: pos[0], y: pos[1], w: pos[2], h: pos[3], fill: { color: 'F4F6F8' }, line: { color: RP_LINE, width: 1 } });
+                            var capH = o.memo ? 0.34 : 0;
+                            var f2 = rpFit({ x: pos[0] + 0.06, y: pos[1] + 0.06, w: pos[2] - 0.12, h: pos[3] - 0.12 - capH }, o.d.w, o.d.h);
+                            gs.addImage({ data: o.d.data, x: f2.x, y: f2.y, w: f2.w, h: f2.h });
+                            if (o.memo) {
+                                gs.addShape('rect', { x: pos[0], y: pos[1] + pos[3] - 0.34, w: pos[2], h: 0.34, fill: { color: 'FFFFFF' }, line: { color: RP_LINE, width: 0.75 } });
+                                gs.addText(o.memo, { x: pos[0] + 0.08, y: pos[1] + pos[3] - 0.34, w: pos[2] - 0.16, h: 0.34, fontSize: 10, color: RP_INK, fontFace: 'Meiryo', valign: 'middle' });
+                            }
                         });
                     });
                 }
@@ -2116,8 +2154,8 @@
             });
             if (cleanPairs.length > 0) record.pairs = cleanPairs;
             PH_CATS.forEach(function(cat) {
-                catSend[cat].forEach(function(data) {
-                    items.push({ recordId: record.id, target: { type: 'cat', cat: cat }, data: data });
+                catSend[cat].forEach(function(o) {
+                    items.push({ recordId: record.id, target: { type: 'cat', cat: cat }, data: o.data, memo: (o.memo || '').trim() });
                 });
             });
             upqEnqueue(items);
@@ -2278,7 +2316,11 @@
                     return '<div style="font-size:0.75rem;font-weight:700;color:var(--gray-500);margin-top:6px;">📁 ' + PH_LABELS[cat] + '</div>' +
                         '<div class="photo-grid">' + arr.map(function(url) {
                             var fullUrl = url.replace('sz=w800', 'sz=w1600');
-                            return '<img src="' + url + '" onclick="openLightbox(\'' + fullUrl + '\')" loading="lazy">';
+                            var pm = (r.photoMemos || {})[url];
+                            return '<div style="display:flex;flex-direction:column;">' +
+                                '<img src="' + url + '" onclick="openLightbox(\'' + fullUrl + '\')" loading="lazy">' +
+                                (pm ? '<div style="font-size:0.68rem;color:var(--gray-500);margin-top:2px;width:0;min-width:100%;">' + escAttr(pm) + '</div>' : '') +
+                                '</div>';
                         }).join('') + '</div>';
                 }).join('');
                 var pairsHtml = (r.pairs && r.pairs.length > 0)
@@ -2352,6 +2394,10 @@
             editExistingPhotos = r.photos ? [...r.photos] : [];
             editExistingPhotosDone = r.photosDone ? [...r.photosDone] : [];
             editExistingPhotosGov = r.photosGov ? [...r.photosGov] : [];
+            editExMemos = { photos: [], photosDone: [], photosGov: [] };
+            PH_CATS.forEach(function(cat) {
+                editExMemos[cat] = (r[cat] || []).map(function(u) { return (r.photoMemos || {})[u] || ''; });
+            });
             editPendingPhotos = [];
             editPendingPhotosDone = [];
             editPendingPhotosGov = [];
@@ -2410,6 +2456,15 @@
             PH_CATS.forEach(function(cat) {
                 if (catKept[cat].length > 0) record[cat] = catKept[cat]; else delete record[cat];
             });
+            // 写真メモ: 残した写真のメモを組み直す（削除した写真のメモは消える）
+            var photoMemos = {};
+            PH_CATS.forEach(function(cat) {
+                phEditExisting(cat).forEach(function(url, mi) {
+                    var mm = (editExMemos[cat][mi] || '').trim();
+                    if (url && mm) photoMemos[url] = mm;
+                });
+            });
+            if (Object.keys(photoMemos).length > 0) record.photoMemos = photoMemos; else delete record.photoMemos;
             // Before/Afterは枠(ラベル・既存URL)を先に記録へ反映し、新しい写真はキューが後から埋める
             var cleanPairs = [];
             var items = [];
@@ -2425,8 +2480,8 @@
             });
             if (cleanPairs.length > 0) record.pairs = cleanPairs; else delete record.pairs;
             PH_CATS.forEach(function(cat) {
-                catNew[cat].forEach(function(data) {
-                    items.push({ recordId: record.id, target: { type: 'cat', cat: cat }, data: data });
+                catNew[cat].forEach(function(o) {
+                    items.push({ recordId: record.id, target: { type: 'cat', cat: cat }, data: o.data, memo: (o.memo || '').trim() });
                 });
             });
 
