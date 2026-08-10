@@ -983,6 +983,16 @@
                             if (!data.accounting) data.accounting = [];
                             state = data;
                             _cloudLoaded = true;
+                            // 前回保存できず端末に残っていた記録があれば復元して保存し直す
+                            try {
+                                var cached = JSON.parse(localStorage.getItem('cv_state_cache') || 'null');
+                                var restored = mergeRecordsInto(state, cached);
+                                if (restored > 0) {
+                                    showToast('未保存だった記録' + restored + '件を復元しました');
+                                    setTimeout(saveToCloud, 500);
+                                }
+                            } catch (eRestore) {}
+                            cacheStateLocal();
                         }
                         setSyncStatus('ok');
                     } catch(e) { setSyncStatus('error'); }
@@ -1036,10 +1046,47 @@
         // 事故が実際に起きたため、保存後に読み直してrevが一致するか検証し、
         // 不一致なら最大3回まで自動再送、それでも失敗なら明確に警告する。
         var _saveInFlight = false, _saveQueued = false;
+        // 端末内バックアップ: 保存が確認できないままアプリを閉じても記録が消えないように
+        function cacheStateLocal() {
+            try { localStorage.setItem('cv_state_cache', JSON.stringify(state)); } catch (e) {}
+        }
+        // クラウド側の記録とid単位で合流する。別端末・別タブが古い状態から保存しても
+        // 新しい記録が上書きで消えないようにするための仕組み。
+        // 削除済みid（墓標）は復活させない。同じidはこちら側を優先。
+        // 戻り値: こちらに無くて合流で増えた記録の件数
+        function mergeRecordsInto(target, other) {
+            if (!other || !Array.isArray(other.records)) return 0;
+            var tomb = {};
+            (target.deletedIds || []).concat(other.deletedIds || []).forEach(function(id) { tomb[id] = 1; });
+            target.deletedIds = Object.keys(tomb).map(Number).slice(-300);
+            var byId = {}, order = [];
+            function put(r, prefer) {
+                if (!r || !r.id || tomb[r.id]) return;
+                if (!(r.id in byId)) order.push(r.id);
+                if (prefer || !(r.id in byId)) byId[r.id] = r;
+            }
+            other.records.forEach(function(r) { put(r, false); });
+            var hadIds = {};
+            target.records.forEach(function(r) { hadIds[r.id] = 1; put(r, true); });
+            var added = 0;
+            order.forEach(function(id) { if (!hadIds[id]) added++; });
+            target.records = order.map(function(id) { return byId[id]; });
+            target.records.sort(function(a, b) {
+                var d = String(b.date).localeCompare(String(a.date));
+                return d !== 0 ? d : (b.id - a.id);
+            });
+            return added;
+        }
         async function saveToCloud() {
             if (_saveInFlight) { _saveQueued = true; return; }
             _saveInFlight = true;
+            cacheStateLocal();
             setSyncStatus('loading');
+            // 保存前にクラウドの現状と合流（別端末が先に保存した記録を消さないため）
+            try {
+                var pre = await fetchCloudSnapshot();
+                if (mergeRecordsInto(state, pre) > 0) { renderRecords(); updateHeaderCount(); }
+            } catch (ePre) {}
             var okSave = false;
             for (var attempt = 0; attempt < 3 && !okSave; attempt++) {
                 try {
@@ -1056,7 +1103,7 @@
             if (okSave) { setSyncStatus('ok'); }
             else {
                 setSyncStatus('error');
-                showToast('⚠️ 保存を確認できませんでした。電波の良い場所で、記録の編集→保存をやり直してください');
+                showToast('⚠️ 保存を確認できませんでした。記録は端末に控えてあり、次にアプリを開いた時に自動で復元されます');
             }
             _saveInFlight = false;
             if (_saveQueued) { _saveQueued = false; saveToCloud(); }
@@ -2171,6 +2218,8 @@
             if (!checkDeletePassword()) return;
             if (!confirm('この記録を削除しますか？')) return;
             state.records = state.records.filter(function(r) { return r.id !== id; });
+            // 墓標に載せて、別端末との合流や端末内バックアップから復活しないようにする
+            state.deletedIds = (state.deletedIds || []).concat(id).slice(-300);
             await saveToCloud();
             renderRecords();
             updateHeaderCount();
