@@ -606,6 +606,15 @@
                             <div id="f-upload-progress" class="upload-progress" style="display:none;"></div>
                         </div>
                     </div>
+                    <div class="form-grid video-feature" style="display:none;">
+                        <div class="form-group full">
+                            <label>動画（1本・目安1〜2分／最大40MB。YouTubeに限定公開で自動投稿されます）</label>
+                            <div class="photo-input-area">
+                                <label class="photo-input-btn">🎬 動画を選択<input id="f-video" type="file" accept="video/*"></label>
+                            </div>
+                            <div id="f-video-info" style="font-size:0.85rem;color:var(--gray-500);margin-top:6px;"></div>
+                        </div>
+                    </div>
                     <div class="form-grid">
                         <div class="form-group full">
                             <label>Before / After 写真（箇所ごと・行政報告用）</label>
@@ -826,6 +835,15 @@
                     </div>
                     <div id="e-photo-preview-gov" class="photo-preview"></div>
                     <div id="e-upload-progress" class="upload-progress" style="display:none;"></div>
+                </div>
+            </div>
+            <div class="form-grid video-feature" style="display:none;">
+                <div class="form-group full">
+                    <label>動画（1本・目安1〜2分／最大40MB。YouTubeに限定公開で自動投稿されます）</label>
+                    <div class="photo-input-area">
+                        <label class="photo-input-btn">🎬 動画を選択<input id="e-video" type="file" accept="video/*"></label>
+                    </div>
+                    <div id="e-video-info" style="font-size:0.85rem;color:var(--gray-500);margin-top:6px;"></div>
                 </div>
             </div>
             <div class="form-grid">
@@ -1773,6 +1791,18 @@
             return (dt.getMonth() + 1) + '月' + dt.getDate() + '日（' + w + '）';
         }
 
+        function rpBuildDateList() {
+            var recent = state.records.slice(0, 30);
+            if (!recent.length) return;
+            var newestDate = recent[0].date;
+            document.getElementById('rp-date-list').innerHTML = recent.map(function(r) {
+                var ph = ((r.pairs && r.pairs.length) || (r.photos && r.photos.length) || (r.photosDone && r.photosDone.length) || (r.photosGov && r.photosGov.length)) ? ' 📷' : '';
+                return '<label style="display:flex;align-items:center;gap:8px;padding:4px 2px;font-size:.9rem;cursor:pointer;">' +
+                    '<input type="checkbox" value="' + r.id + '"' + (r.date === newestDate ? ' checked' : '') + '>' +
+                    fmtDateJP(r.date) + '　' + rpEsc(r.place) + ph + '</label>';
+            }).join('');
+        }
+
         function openReportModal() {
             if (state.records.length === 0) { showToast('まだ記録がありません'); return; }
             var rc = document.getElementById('rp-recipients');
@@ -1781,16 +1811,16 @@
                     return '<label style="display:flex;align-items:center;gap:8px;padding:3px 2px;font-size:.9rem;cursor:pointer;"><input type="checkbox" data-ri="' + i + '"' + (r.def ? ' checked' : '') + '>' + rpEsc(r.label) + '</label>';
                 }).join('');
             }
-            var recent = state.records.slice(0, 30);
-            var newestDate = recent[0].date;
-            document.getElementById('rp-date-list').innerHTML = recent.map(function(r) {
-                var ph = ((r.pairs && r.pairs.length) || (r.photos && r.photos.length) || (r.photosDone && r.photosDone.length) || (r.photosGov && r.photosGov.length)) ? ' 📷' : '';
-                return '<label style="display:flex;align-items:center;gap:8px;padding:4px 2px;font-size:.9rem;cursor:pointer;">' +
-                    '<input type="checkbox" value="' + r.id + '"' + (r.date === newestDate ? ' checked' : '') + '>' +
-                    fmtDateJP(r.date) + '　' + rpEsc(r.place) + ph + '</label>';
-            }).join('');
+            rpBuildDateList();
             document.getElementById('rp-out').style.display = 'none';
             document.getElementById('report-modal').style.display = 'flex';
+            // 報告書は必ず最新データで作る: 開いた時にクラウドを取り直し、
+            // 増えていれば（他端末で入力した分など）日付一覧を作り直す
+            var beforeLen = state.records.length;
+            softRefresh(true).then(function() {
+                var modalOpen = document.getElementById('report-modal').style.display !== 'none';
+                if (modalOpen && state.records.length !== beforeLen) rpBuildDateList();
+            });
         }
         function closeReportModal() { document.getElementById('report-modal').style.display = 'none'; }
 
