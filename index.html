@@ -1408,8 +1408,10 @@
         // 品質を段階的に下げて1枚あたり約300KB以下にする（送信時間の短縮のため）。
         // 従来は幅しか見ておらず、縦長写真が縮小されないまま送られていた。
         function resizeImage(file, maxWidth, quality) {
-            maxWidth = maxWidth || 1200;
-            var TARGET_LEN = 400000; // dataURLの文字数 ≒ バイナリ300KB相当
+            // 報告書・カードの表示は常にw800縮小版を使うため、1100pxで品質は十分。
+            // 1枚あたりの容量を約2〜3割減らして送信を速くする
+            maxWidth = maxWidth || 1100;
+            var TARGET_LEN = 300000; // dataURLの文字数 ≒ バイナリ225KB相当
             function encode(img, w0, h0) {
                 var canvas = document.createElement('canvas');
                 var scale = Math.min(1, maxWidth / w0, 1600 / h0);
@@ -1463,15 +1465,15 @@
                         delete window[cbName];
                         if (scr.parentNode) document.head.removeChild(scr);
                         if (data && data.status === 'done' && data.url) { resolve(data.url); }
-                        else if (++attempts < maxAttempts) { setTimeout(poll, 1500); }
+                        else if (++attempts < maxAttempts) { setTimeout(poll, 1200); }
                         else { reject('タイムアウト'); }
                     };
                     var scr = document.createElement('script');
                     scr.src = GAS_URL + '?check_upload=' + encodeURIComponent(uploadId) + '&callback=' + cbName + '&t=' + Date.now();
-                    scr.onerror = function() { delete window[cbName]; if (scr.parentNode) document.head.removeChild(scr); if (++attempts < maxAttempts) setTimeout(poll, 1500); else reject('通信エラー'); };
+                    scr.onerror = function() { delete window[cbName]; if (scr.parentNode) document.head.removeChild(scr); if (++attempts < maxAttempts) setTimeout(poll, 1200); else reject('通信エラー'); };
                     document.head.appendChild(scr);
                 };
-                setTimeout(poll, 2000);
+                setTimeout(poll, 1500);
             });
         }
 

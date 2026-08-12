@@ -42,11 +42,20 @@ function doGet(e) {
 function handleCheckUpload(e) {
   var uploadId = e.parameter.check_upload;
   var callback = e.parameter.callback;
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var uploadsSheet = ss.getSheetByName('Uploads');
   var result;
 
-  if (uploadsSheet) {
+  // 速度改善: まずCacheServiceを見る（スプレッドシートを開かずに済み大幅に速い）
+  try {
+    var cached = CacheService.getScriptCache().get('up_' + uploadId);
+    if (cached) result = JSON.stringify({status: 'done', url: cached});
+  } catch (errC) {}
+
+  var ss, uploadsSheet;
+  if (!result) {
+    ss = SpreadsheetApp.getActiveSpreadsheet();
+    uploadsSheet = ss.getSheetByName('Uploads');
+  }
+  if (!result && uploadsSheet) {
     var lastRow = uploadsSheet.getLastRow();
     if (lastRow > 0) {
       var data = uploadsSheet.getRange(1, 1, lastRow, 3).getValues();
@@ -130,22 +139,36 @@ function handleImageUpload(e) {
   var imageData = e.parameter.image;
   var uploadId = e.parameter.uploadId;
 
-  // CleanVibes_Photos フォルダを取得または作成
-  var folderName = 'CleanVibes_Photos';
-  var folders = DriveApp.getFoldersByName(folderName);
-  var folder = folders.hasNext() ? folders.next() : DriveApp.createFolder(folderName);
+  // 速度改善: フォルダIDはScriptPropertiesに控えて毎回の検索を省く。
+  // 共有はフォルダに1回だけ設定し、中のファイルに継承させる（ファイルごとの
+  // setSharingは1枚あたり0.5〜1秒かかっていた）
+  var props = PropertiesService.getScriptProperties();
+  var folderId = props.getProperty('photosFolderId');
+  var folder = null;
+  if (folderId) {
+    try { folder = DriveApp.getFolderById(folderId); } catch (err) { folder = null; }
+  }
+  if (!folder) {
+    var folders = DriveApp.getFoldersByName('CleanVibes_Photos');
+    folder = folders.hasNext() ? folders.next() : DriveApp.createFolder('CleanVibes_Photos');
+    props.setProperty('photosFolderId', folder.getId());
+  }
+  if (!props.getProperty('photosFolderShared')) {
+    folder.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    props.setProperty('photosFolderShared', '1');
+  }
 
-  // Base64デコードしてファイル作成
   var base64 = imageData.replace(/^data:image\/[^;]+;base64,/, '');
   var decoded = Utilities.base64Decode(base64);
   var blob = Utilities.newBlob(decoded, 'image/jpeg', 'cv_' + uploadId + '.jpg');
   var file = folder.createFile(blob);
-  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
   var fileId = file.getId();
   var url = 'https://drive.google.com/thumbnail?id=' + fileId + '&sz=w800';
 
-  // Uploadsシートに結果を記録
+  // 速度改善: 結果をCacheServiceにも置く（確認ポーリングがシート全読みを省ける）。
+  // シートへの追記は従来通り行い、キャッシュ切れ時の受け皿にする
+  try { CacheService.getScriptCache().put('up_' + uploadId, url, 21600); } catch (errC) {}
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var uploadsSheet = ss.getSheetByName('Uploads');
   if (!uploadsSheet) {
@@ -207,6 +230,7 @@ function handleVideoFinalize(e) {
       snippet: { title: e.parameter.title || 'CleanVibes活動動画', description: e.parameter.desc || '' },
       status: { privacyStatus: 'unlisted', selfDeclaredMadeForKids: false }
     }, 'snippet,status', blob);
+    try { CacheService.getScriptCache().put('up_' + uploadId, 'https://youtu.be/' + video.id, 21600); } catch (errC) {}
     uploadsSheet.appendRow([uploadId, 'https://youtu.be/' + video.id, video.id]);
     for (var k = 0; k < total; k++) {
       var fs2 = folder.getFilesByName(uploadId + '_' + k);
