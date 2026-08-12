@@ -1,5 +1,12 @@
 function doGet(e) {
   try {
+    // 動画機能が使えるGASかどうかの確認（フロントはこれが返るまで動画UIを出さない）
+    if (e.parameter.video_support) {
+      var vcb = e.parameter.callback || 'cb';
+      return ContentService.createTextOutput(vcb + '({"videoSupport":true})')
+        .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    }
+
     // 写真アップロード結果の確認
     if (e.parameter.check_upload) {
       return handleCheckUpload(e);
@@ -94,6 +101,14 @@ function doPost(e) {
       return handleImageUpload(e);
     }
 
+    // 動画: 分割チャンクの受信／結合してYouTubeへ限定公開投稿
+    if (action === 'video_chunk') {
+      return handleVideoChunk(e);
+    }
+    if (action === 'video_finalize') {
+      return handleVideoFinalize(e);
+    }
+
     // 行政報告メールのGmail下書きを作成
     if (action === 'report_draft') {
       return handleReportDraft(e);
@@ -140,6 +155,70 @@ function handleImageUpload(e) {
 
   return ContentService.createTextOutput('ok')
     .setMimeType(ContentService.MimeType.TEXT);
+}
+
+// ==========================================
+// 動画: 分割受信 → 結合 → YouTubeへ限定公開投稿
+// 事前準備: GASエディタの「サービス +」で YouTube Data API v3 を追加しておくこと
+// ==========================================
+function getOrCreateFolder_(name) {
+  var fs = DriveApp.getFoldersByName(name);
+  return fs.hasNext() ? fs.next() : DriveApp.createFolder(name);
+}
+
+// チャンク受信: 一時フォルダに uploadId_番号 の名前で保存（再送時は同名を捨てて上書き）
+function handleVideoChunk(e) {
+  var folder = getOrCreateFolder_('CleanVibes_TmpChunks');
+  var name = e.parameter.uploadId + '_' + e.parameter.idx;
+  var old = folder.getFilesByName(name);
+  while (old.hasNext()) old.next().setTrashed(true);
+  var bytes = Utilities.base64Decode(e.parameter.data);
+  folder.createFile(Utilities.newBlob(bytes, 'application/octet-stream', name));
+  return ContentService.createTextOutput('ok')
+    .setMimeType(ContentService.MimeType.TEXT);
+}
+
+// 結合してYouTubeへ投稿し、結果をUploadsシートへ書く（フロントはcheck_uploadで受け取る）
+function handleVideoFinalize(e) {
+  var uploadId = e.parameter.uploadId;
+  var total = parseInt(e.parameter.total, 10);
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var uploadsSheet = ss.getSheetByName('Uploads') || ss.insertSheet('Uploads');
+  // 同じuploadIdが処理済みなら二重投稿しない（再送時の安全弁）
+  var lastRow = uploadsSheet.getLastRow();
+  if (lastRow > 0) {
+    var done = uploadsSheet.getRange(1, 1, lastRow, 1).getValues();
+    for (var di = 0; di < done.length; di++) {
+      if (String(done[di][0]) === String(uploadId)) {
+        return ContentService.createTextOutput('ok').setMimeType(ContentService.MimeType.TEXT);
+      }
+    }
+  }
+  try {
+    var folder = getOrCreateFolder_('CleanVibes_TmpChunks');
+    var all = [];
+    for (var i = 0; i < total; i++) {
+      var files = folder.getFilesByName(uploadId + '_' + i);
+      if (!files.hasNext()) throw new Error('チャンク' + i + 'が未着です');
+      all = all.concat(files.next().getBlob().getBytes());
+    }
+    var blob = Utilities.newBlob(all, e.parameter.mime || 'video/mp4', 'cleanvibes_' + uploadId + '.mp4');
+    var video = YouTube.Videos.insert({
+      snippet: { title: e.parameter.title || 'CleanVibes活動動画', description: e.parameter.desc || '' },
+      status: { privacyStatus: 'unlisted', selfDeclaredMadeForKids: false }
+    }, 'snippet,status', blob);
+    uploadsSheet.appendRow([uploadId, 'https://youtu.be/' + video.id, video.id]);
+    for (var k = 0; k < total; k++) {
+      var fs2 = folder.getFilesByName(uploadId + '_' + k);
+      while (fs2.hasNext()) fs2.next().setTrashed(true);
+    }
+    return ContentService.createTextOutput('ok')
+      .setMimeType(ContentService.MimeType.TEXT);
+  } catch (err) {
+    uploadsSheet.appendRow([uploadId, 'ERROR: ' + err.message, '']);
+    return ContentService.createTextOutput('error')
+      .setMimeType(ContentService.MimeType.TEXT);
+  }
 }
 
 // ==========================================

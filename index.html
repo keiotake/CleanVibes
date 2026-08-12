@@ -260,6 +260,8 @@
         .photo-preview-item .photo-thumb { position: relative; width: 100%; height: 80px; border-radius: 11px; overflow: hidden; border: 1px solid var(--hair-dark); }
         .photo-preview-item img { width: 100%; height: 100%; object-fit: cover; }
         .photo-memo-input { width: 100%; margin-top: 4px; padding: 6px 8px; font-size: 0.75rem; border-radius: 8px; }
+        .pair-quick { width: 100%; margin-top: 8px; padding: 9px; border: 1.5px dashed var(--ocean); background: rgba(14,160,230,0.06); color: var(--ocean); border-radius: 10px; font-family: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; }
+        .chip-btn { padding: 6px 12px; border: 1px solid var(--hair-dark); background: #f4f8fa; color: var(--ink); border-radius: 99px; font-family: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer; }
         .photo-preview-item .remove-photo { position: absolute; top: 2px; right: 2px; width: 22px; height: 22px; border-radius: 50%; background: rgba(15,42,57,0.78); color: #fff; border: none; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; }
         .photo-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
         .photo-grid img { width: 124px; height: 92px; object-fit: cover; border-radius: 11px; cursor: pointer; transition: all 0.22s; border: 1px solid var(--hair); }
@@ -555,11 +557,11 @@
                 <div class="form-section">
                     <div class="form-title">活動記録を追加</div>
                     <div class="form-grid">
-                        <div class="form-group"><label>日時 *</label><input id="f-date" type="date" required></div>
+                        <div class="form-group"><label>日時 *</label><input id="f-date" type="date" required><div style="display:flex;gap:6px;margin-top:6px;"><button type="button" class="chip-btn" onclick="setQuickDate(0)">今日</button><button type="button" class="chip-btn" onclick="setQuickDate(1)">昨日</button><button type="button" class="chip-btn" onclick="setQuickDate(2)">一昨日</button></div></div>
                         <div class="form-group"><label>場所 *</label><input id="f-place" type="text" list="dl-place" placeholder="例: 〇〇公園" required></div>
                     </div>
                     <div class="form-grid">
-                        <div class="form-group full"><label>参加メンバー *</label><div id="member-checkboxes" class="checkbox-group"></div></div>
+                        <div class="form-group full"><label>参加メンバー *</label><div style="margin:2px 0 8px;"><button type="button" class="chip-btn" onclick="applyLastMembers()">👥 前回と同じメンバーを選択</button></div><div id="member-checkboxes" class="checkbox-group"></div></div>
                     </div>
                     <div class="form-grid">
                         <div class="form-group full"><label>作業内容 *</label><textarea id="f-work" placeholder="清掃内容を記入してください" required></textarea></div>
@@ -983,6 +985,7 @@
                             if (!data.accounting) data.accounting = [];
                             state = data;
                             _cloudLoaded = true;
+                            _lastSync = Date.now();
                             // 前回保存できず端末に残っていた記録があれば復元して保存し直す
                             try {
                                 var cached = JSON.parse(localStorage.getItem('cv_state_cache') || 'null');
@@ -1100,7 +1103,7 @@
                 } catch (e) { okSave = false; }
                 if (!okSave) await new Promise(function(r) { setTimeout(r, 1500); });
             }
-            if (okSave) { setSyncStatus('ok'); }
+            if (okSave) { setSyncStatus('ok'); _lastSync = Date.now(); }
             else {
                 setSyncStatus('error');
                 showToast('⚠️ 保存を確認できませんでした。記録は端末に控えてあり、次にアプリを開いた時に自動で復元されます');
@@ -1373,7 +1376,30 @@
         document.addEventListener('visibilitychange', function() {
             if (document.visibilityState === 'hidden') { _upqWasHidden = true; return; }
             if (bgUploadCount > 0) { upqWake(true); upqKick(); }
+            softRefresh();
         });
+        // iOSはタブをメモリから復元するため、開き直しても読み込みが走らず
+        // 古いデータが表示され続ける。アプリに戻った時に最新を取り直す。
+        var _lastSync = 0;
+        async function softRefresh(force) {
+            if (!_cloudLoaded || _saveInFlight || bgUploadCount > 0) return;
+            if (!force && Date.now() - _lastSync < 60000) return;
+            try {
+                var snap = await fetchCloudSnapshot();
+                if (!snap || !Array.isArray(snap.records) || !Array.isArray(snap.members)) return;
+                _lastSync = Date.now();
+                if (!snap.supports) snap.supports = [];
+                if (!snap.accounting) snap.accounting = [];
+                mergeRecordsInto(snap, state); // 端末にしか無い未保存の記録は残す
+                var changed = JSON.stringify(snap) !== JSON.stringify(state);
+                state = snap;
+                cacheStateLocal();
+                if (changed) renderAll();
+                setSyncStatus('ok');
+                if (force) showToast(changed ? '最新のデータに更新しました' : 'すでに最新です');
+            } catch (e) {}
+        }
+        window.addEventListener('pageshow', function(ev) { if (ev.persisted) softRefresh(); });
 
         // ==========================================
         // PHOTOS
@@ -1459,6 +1485,11 @@
             populateSupportItemPresets();
             onSupportTypeChange();
             populateBagSelects();
+            // ヘッダーの同期表示をタップで手動更新できるように
+            ['sync-dot', 'sync-label'].forEach(function(id) {
+                var el = document.getElementById(id);
+                if (el) { el.style.cursor = 'pointer'; el.addEventListener('click', function() { softRefresh(true); }); }
+            });
         });
 
         // 回収量プルダウン（ガラ袋・土嚢袋 各1〜20袋）。保存は従来通り
@@ -1593,10 +1624,32 @@
                 now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
                 document.getElementById('f-date').value = now.toISOString().slice(0, 10);
                 renderMemberCheckboxes();
-                pendingPhotos = [];
-                document.getElementById('f-photo-preview').innerHTML = '';
+                // 前回選んだ写真・ペアが残らないよう全カテゴリを初期化。従来は「作業の様子」
+                // だけ消していたため、閉じて開き直すと完成写真・行政依頼箇所・Before/Afterの
+                // 選択が見えないまま残り、次の記録に混ざったり枚数上限を圧迫したりしていた
+                pendingPhotos = []; pendingPhotosDone = []; pendingPhotosGov = [];
+                PH_CATS.forEach(function(cat) { document.getElementById('f-photo-preview' + phSuffix(cat)).innerHTML = ''; });
+                pendingPairs = [];
+                renderPairRows('f');
                 document.getElementById('f-upload-progress').style.display = 'none';
             }
+        }
+
+        function setQuickDate(daysAgo) {
+            var d = new Date();
+            d.setDate(d.getDate() - daysAgo);
+            d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+            document.getElementById('f-date').value = d.toISOString().slice(0, 10);
+        }
+        function applyLastMembers() {
+            if (!state.records.length) { showToast('過去の記録がありません'); return; }
+            var last = state.records[0].members || [];
+            var n = 0;
+            document.querySelectorAll('#member-checkboxes input').forEach(function(c) {
+                c.checked = last.indexOf(c.value) !== -1;
+                if (c.checked) n++;
+            });
+            showToast('前回の' + n + '名を選択しました');
         }
 
         function renderMemberCheckboxes() {
@@ -1637,6 +1690,7 @@
                     '<input type="text" placeholder="箇所名（例: 公園入口の花壇）" value="' + (p.label || '').replace(/"/g, '&quot;') + '" oninput="setPairLabel(\'' + prefix + '\',' + i + ', this.value)">' +
                     '<button type="button" class="pair-remove" onclick="removePairRow(\'' + prefix + '\',' + i + ')">✕</button></div>' +
                     '<div class="pair-slots">' + slotHtml('before', 'Before') + '<span class="pair-arrow">➡</span>' + slotHtml('after', 'After') + '</div>' +
+                    '<button type="button" class="pair-quick" onclick="pickPairBoth(\'' + prefix + '\',' + i + ')">📷 2枚続けて選択（1枚目=Before / 2枚目=After）</button>' +
                     '</div>';
             }).join('');
         }
@@ -1647,6 +1701,21 @@
                 if (!inp.files || !inp.files[0]) return;
                 var base64 = await resizeImage(inp.files[0]);
                 pairArr(prefix)[idx][side] = { data: base64 };
+                renderPairRows(prefix);
+            };
+            inp.click();
+        }
+        // 2枚まとめて選択: 1枚目がBefore、2枚目がAfterに入る
+        function pickPairBoth(prefix, idx) {
+            var inp = document.createElement('input');
+            inp.type = 'file'; inp.accept = 'image/*'; inp.multiple = true;
+            inp.onchange = async function() {
+                var fs = [...(inp.files || [])];
+                if (!fs.length) return;
+                var p = pairArr(prefix)[idx];
+                p.before = { data: await resizeImage(fs[0]) };
+                if (fs[1]) p.after = { data: await resizeImage(fs[1]) };
+                if (fs.length > 2) showToast('3枚目以降は使いませんでした（1枚目=Before、2枚目=After）');
                 renderPairRows(prefix);
             };
             inp.click();
