@@ -1110,19 +1110,39 @@
             return okSave; // 写真キューが「保存を確認できたか」を見るために返す
         }
 
-        // 裏で送信中の写真枚数バッジ＋ページを閉じる前の警告
-        var bgUploadCount = 0;
-        function bgUploadShow(n) {
-            bgUploadCount = Math.max(0, n);
+        // 裏で送信中の進捗バー（◯/◯枚）＋ページを閉じる前の警告
+        var bgUploadCount = 0;                          // 残枚数（閉じる前警告・再開判定に使用）
+        var _bgSeen = {}, _bgTotalN = 0, _bgDoneN = 0;  // 今回の送信の総数と完了数
+        function bgTrackNew(items) {
+            items.forEach(function(it) { if (!_bgSeen[it.qid]) { _bgSeen[it.qid] = 1; _bgTotalN++; } });
+        }
+        function bgUploadRender(total, done) {
+            bgUploadCount = Math.max(0, total - done);
             var el = document.getElementById('bg-upload-badge');
             if (!el) {
                 el = document.createElement('div');
                 el.id = 'bg-upload-badge';
-                el.style.cssText = 'position:fixed;bottom:76px;right:12px;z-index:9999;background:#1a7f4b;color:#fff;padding:8px 14px;border-radius:20px;font-size:0.85rem;box-shadow:0 2px 8px rgba(0,0,0,0.25);display:none;';
+                el.style.cssText = 'position:fixed;bottom:76px;right:12px;z-index:9999;background:#1a7f4b;color:#fff;padding:10px 14px;border-radius:14px;font-size:0.82rem;box-shadow:0 2px 8px rgba(0,0,0,0.25);display:none;min-width:190px;';
+                el.innerHTML = '<div id="bg-upload-text" style="margin-bottom:6px;font-weight:700;"></div>' +
+                    '<div style="background:rgba(255,255,255,0.28);border-radius:99px;height:8px;overflow:hidden;">' +
+                    '<div id="bg-upload-fill" style="background:#fff;height:100%;width:0%;border-radius:99px;transition:width 0.4s;"></div></div>';
                 document.body.appendChild(el);
             }
-            if (bgUploadCount > 0) { el.textContent = '📤 写真を送信中… 残り' + bgUploadCount + '枚'; el.style.display = 'block'; }
-            else { el.style.display = 'none'; }
+            var txt = document.getElementById('bg-upload-text');
+            var fill = document.getElementById('bg-upload-fill');
+            if (bgUploadCount > 0) {
+                txt.textContent = '📤 写真を送信中 ' + done + ' / ' + total + '枚';
+                fill.style.width = (total > 0 ? Math.round(done * 100 / total) : 0) + '%';
+                el.style.display = 'block';
+            } else if (total > 0 && done >= total) {
+                // 100%を見せてから消す
+                txt.textContent = '✅ 送信完了（' + total + '枚）';
+                fill.style.width = '100%';
+                el.style.display = 'block';
+                setTimeout(function() { if (bgUploadCount === 0) el.style.display = 'none'; }, 2000);
+            } else {
+                el.style.display = 'none';
+            }
         }
         window.addEventListener('beforeunload', function(ev) {
             // キューはIndexedDBに残るので閉じても次回再開されるが、その場で送り切る方が早い
@@ -1258,6 +1278,8 @@
             if (!_cloudLoaded) return; // 読み込み失敗時に不完全なstateで保存しないための守り
             _upqRunning = true;
             upqWake(true);
+            // 前回の送信が全部終わっていれば、進捗カウンタを新規スタート
+            if (_bgTotalN === _bgDoneN) { _bgSeen = {}; _bgTotalN = 0; _bgDoneN = 0; }
             var sentCount = 0, failedCount = 0, emptyRounds = 0, bailed = false;
             try {
                 while (true) {
@@ -1265,7 +1287,8 @@
                     var items = await upqAll();
                     var uploaded = items.filter(function(i) { return i.url; });
                     var toSend = items.filter(function(i) { return !i.url; }).sort(function(a, b) { return a.seq - b.seq; });
-                    bgUploadShow(toSend.length);
+                    bgTrackNew(toSend);
+                    bgUploadRender(_bgTotalN, _bgDoneN);
                     if (uploaded.length > 0) {
                         var changed = false;
                         uploaded.forEach(function(it) { if (upqAttach(it)) changed = true; });
@@ -1286,23 +1309,23 @@
                             uploadImageToCloud(it.data, 'img_' + it.qid),
                             new Promise(function(_, rej) { setTimeout(function() { rej('タイムアウト'); }, 180000); })
                         ])
-                            .then(function(url) { it.url = url; delete it.data; okInBatch++; sentCount++; return upqPut(it); })
+                            .then(function(url) { it.url = url; delete it.data; okInBatch++; sentCount++; _bgDoneN++; return upqPut(it); })
                             .catch(function() {
                                 // 画面オフ・アプリ切替による中断はiOSがJSを止めるだけなので
                                 // 「失敗」に数えない（中断エラーは復帰後に届くため、
                                 // このバッチ中に一度でも画面が隠れたかで判定する）
                                 if (!_upqWasHidden && document.visibilityState !== 'hidden') it.tries = (it.tries || 0) + 1;
-                                if (it.tries >= 6) { failedCount++; return upqDel(it.qid); }
+                                if (it.tries >= 6) { failedCount++; _bgDoneN++; return upqDel(it.qid); }
                                 return upqPut(it);
                             })
-                            .then(function() { bgUploadShow(bgUploadCount - 1); });
+                            .then(function() { bgUploadRender(_bgTotalN, _bgDoneN); });
                     }));
                     if (okInBatch === 0) {
                         emptyRounds++;
                         if (emptyRounds >= 2) { // 電波が無いなど。残りは持ち越して後で自動再開
                             var left = (await upqAll()).filter(function(i) { return !i.url; }).length;
                             if (left > 0) {
-                                bgUploadShow(left);
+                                bgUploadRender(_bgTotalN, _bgDoneN);
                                 showToast('⚠️ 写真' + left + '枚が未送信です。しばらくして自動で再開します');
                                 setTimeout(upqKick, 30000);
                             }
