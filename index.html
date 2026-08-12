@@ -1152,12 +1152,12 @@
             var txt = document.getElementById('bg-upload-text');
             var fill = document.getElementById('bg-upload-fill');
             if (bgUploadCount > 0) {
-                txt.textContent = '📤 写真を送信中 ' + done + ' / ' + total + '枚';
+                txt.textContent = '📤 送信中 ' + done + ' / ' + total + '件';
                 fill.style.width = (total > 0 ? Math.round(done * 100 / total) : 0) + '%';
                 el.style.display = 'block';
             } else if (total > 0 && done >= total) {
                 // 100%を見せてから消す
-                txt.textContent = '✅ 送信完了（' + total + '枚）';
+                txt.textContent = '✅ 送信完了（' + total + '件）';
                 fill.style.width = '100%';
                 el.style.display = 'block';
                 setTimeout(function() { if (bgUploadCount === 0) el.style.display = 'none'; }, 2000);
@@ -1262,6 +1262,11 @@
                 }
                 return true;
             }
+            if (t.type === 'video') {
+                if (rec.video === it.url) return false;
+                rec.video = it.url;
+                return true;
+            }
             if (t.type === 'pair') {
                 var pairs = rec.pairs || [];
                 var p = pairs[t.idx];
@@ -1325,10 +1330,13 @@
                     var okInBatch = 0;
                     _upqWasHidden = false; // このバッチ中に画面が隠れたかの記録をリセット
                     await Promise.all(batch.map(function(it) {
-                        // 1枚が万一宙吊りになってもキュー全体を道連れにしないための保険
+                        var isVideo = it.target && it.target.type === 'video';
+                        // 1件が万一宙吊りになってもキュー全体を道連れにしないための保険
                         return Promise.race([
-                            uploadImageToCloud(it.data, 'img_' + it.qid),
-                            new Promise(function(_, rej) { setTimeout(function() { rej('タイムアウト'); }, 180000); })
+                            isVideo
+                                ? uploadVideoToCloud(it.data, 'vid_' + it.qid, { mime: it.mime, title: it.vtitle, desc: it.vdesc })
+                                : uploadImageToCloud(it.data, 'img_' + it.qid),
+                            new Promise(function(_, rej) { setTimeout(function() { rej('タイムアウト'); }, isVideo ? 900000 : 180000); })
                         ])
                             .then(function(url) { it.url = url; delete it.data; okInBatch++; sentCount++; _bgDoneN++; return upqPut(it); })
                             .catch(function() {
@@ -1347,7 +1355,7 @@
                             var left = (await upqAll()).filter(function(i) { return !i.url; }).length;
                             if (left > 0) {
                                 bgUploadRender(_bgTotalN, _bgDoneN);
-                                showToast('⚠️ 写真' + left + '枚が未送信です。しばらくして自動で再開します');
+                                showToast('⚠️ ' + left + '件が未送信です。しばらくして自動で再開します');
                                 setTimeout(upqKick, 30000);
                             }
                             bailed = true;
@@ -1373,7 +1381,7 @@
                         if (pruned) { renderRecords(); saveToCloud(); }
                     }
                     if (sentCount > 0 || failedCount > 0) {
-                        showToast(failedCount > 0 ? '写真の送信が完了しました（' + failedCount + '枚は失敗）' : '写真の送信が完了しました');
+                        showToast(failedCount > 0 ? '送信が完了しました（' + failedCount + '件は失敗）' : '送信が完了しました');
                     }
                 }
             } finally {
@@ -1388,7 +1396,7 @@
             var items = await upqAll();
             if (items.length === 0) return;
             var n = items.filter(function(i) { return !i.url; }).length;
-            if (n > 0) showToast('前回の写真' + n + '枚の送信を再開します');
+            if (n > 0) showToast('前回の' + n + '件の送信を再開します');
             upqRun();
         }
         document.addEventListener('visibilitychange', function() {
@@ -1418,6 +1426,145 @@
             } catch (e) {}
         }
         window.addEventListener('pageshow', function(ev) { if (ev.persisted) softRefresh(); });
+
+        // ==========================================
+        // 動画（YouTube限定公開に自動投稿）
+        //  GASが対応版に更新されるまでUIごと隠す。旧GASに動画POSTすると通常保存として
+        //  処理されデータを壊すため、video_supportの確認が取れるまで一切送らない。
+        // ==========================================
+        var _videoSupported = false;
+        (function probeVideoSupport() {
+            var cb = 'vsup_' + Date.now();
+            var s = document.createElement('script');
+            var timer = setTimeout(cleanup, 20000);
+            function cleanup() { clearTimeout(timer); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+            window[cb] = function(d) {
+                cleanup();
+                if (d && d.videoSupport) {
+                    _videoSupported = true;
+                    document.querySelectorAll('.video-feature').forEach(function(el) { el.style.display = ''; });
+                }
+            };
+            s.src = GAS_URL + '?video_support=1&callback=' + cb + '&t=' + Date.now();
+            s.onerror = cleanup;
+            document.head.appendChild(s);
+        })();
+        var pendingVideo = null;                    // 追加フォームで選択中の動画File
+        var editVideoFile = null, editVideoRemoved = false, editVideoCurrent = null; // 編集用
+        function handleVideoSelect(e, prefix) {
+            var f = e.target.files && e.target.files[0];
+            e.target.value = '';
+            if (!f) return;
+            if (f.size > 40 * 1024 * 1024) { showToast('動画は40MBまで（目安1〜2分）にしてください'); return; }
+            if (prefix === 'f') pendingVideo = f;
+            else { editVideoFile = f; editVideoRemoved = false; }
+            renderVideoInfo(prefix);
+        }
+        function removeVideo(prefix) {
+            if (prefix === 'f') pendingVideo = null;
+            else { editVideoFile = null; editVideoCurrent = null; editVideoRemoved = true; }
+            renderVideoInfo(prefix);
+        }
+        function renderVideoInfo(prefix) {
+            var el = document.getElementById(prefix + '-video-info');
+            if (!el) return;
+            var f = prefix === 'f' ? pendingVideo : editVideoFile;
+            if (f) {
+                el.innerHTML = '🎬 ' + escAttr(f.name) + '（' + (f.size / 1048576).toFixed(1) + 'MB） <button type="button" class="chip-btn" onclick="removeVideo(\'' + prefix + '\')">✕ 取り消し</button>';
+            } else if (prefix === 'e' && editVideoCurrent) {
+                el.innerHTML = '🎬 <a href="' + escAttr(editVideoCurrent) + '" target="_blank" rel="noopener">現在の動画（YouTube）</a> <button type="button" class="chip-btn" onclick="removeVideo(\'e\')">✕ 削除</button>';
+            } else {
+                el.innerHTML = '';
+            }
+        }
+        // 完了確認を1回だけ問い合わせる（結果URL / まだならnull）
+        function checkUploadOnce(uploadId) {
+            return new Promise(function(res) {
+                var cb = 'uq_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5);
+                var s = document.createElement('script');
+                var timer = setTimeout(function() { cleanup(); res(null); }, 15000);
+                function cleanup() { clearTimeout(timer); delete window[cb]; if (s.parentNode) s.parentNode.removeChild(s); }
+                window[cb] = function(d) { cleanup(); res(d && d.status === 'done' && d.url ? String(d.url) : null); };
+                s.src = GAS_URL + '?check_upload=' + encodeURIComponent(uploadId) + '&callback=' + cb + '&t=' + Date.now();
+                s.onerror = function() { cleanup(); res(null); };
+                document.head.appendChild(s);
+            });
+        }
+        // 動画の送信: 約5MBずつ分割POST→結合指示→YouTube処理完了をポーリング
+        async function uploadVideoToCloud(dataUrl, uploadId, meta) {
+            // 再送時: 既に投稿済みならそのURLを使う（二重投稿防止）
+            var existing = await checkUploadOnce(uploadId);
+            if (existing) {
+                if (existing.indexOf('http') === 0) return existing;
+                throw 'YouTube投稿エラー';
+            }
+            var b64 = String(dataUrl).replace(/^data:[^;]+;base64,/, '');
+            var CH = 5242880 - (5242880 % 4); // base64文字数（4の倍数で切ってチャンク単体で復号可能に）
+            var total = Math.ceil(b64.length / CH);
+            for (var i = 0; i < total; i++) {
+                var params = new URLSearchParams();
+                params.append('action', 'video_chunk');
+                params.append('uploadId', uploadId);
+                params.append('idx', i);
+                params.append('data', b64.slice(i * CH, (i + 1) * CH));
+                var sent = false;
+                for (var t = 0; t < 2 && !sent; t++) {
+                    try { await postWithTimeout(params.toString(), 120000); sent = true; }
+                    catch (e2) { if (t === 1) throw '送信失敗'; }
+                }
+            }
+            var fin = new URLSearchParams();
+            fin.append('action', 'video_finalize');
+            fin.append('uploadId', uploadId);
+            fin.append('total', total);
+            fin.append('mime', meta.mime || 'video/mp4');
+            fin.append('title', meta.title || 'CleanVibes活動動画');
+            fin.append('desc', meta.desc || '');
+            // 結合〜YouTube投稿はサーバ側で数十秒かかる。通信が切れても処理は続くので
+            // ここでの失敗は無視してポーリングで結果を待つ
+            try { await postWithTimeout(fin.toString(), 120000); } catch (e3) {}
+            for (var a = 0; a < 60; a++) { // 5秒×60回 = 約5分待つ
+                await new Promise(function(r) { setTimeout(r, 5000); });
+                var url = await checkUploadOnce(uploadId);
+                if (url) {
+                    if (url.indexOf('http') === 0) return url;
+                    throw 'YouTube投稿エラー';
+                }
+            }
+            throw 'タイムアウト';
+        }
+        // パワポ用QRコード（qrcode-generatorを必要時のみCDNから読み込む）
+        var _qrLibLoading = null;
+        function loadQrLib() {
+            if (window.qrcode) return Promise.resolve();
+            if (_qrLibLoading) return _qrLibLoading;
+            _qrLibLoading = new Promise(function(resolve, reject) {
+                var s = document.createElement('script');
+                s.src = 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js';
+                s.onload = resolve;
+                s.onerror = function() { _qrLibLoading = null; reject(new Error('qr lib load failed')); };
+                document.head.appendChild(s);
+            });
+            return _qrLibLoading;
+        }
+        function makeQrPng(text) {
+            var qr = qrcode(0, 'M');
+            qr.addData(text);
+            qr.make();
+            var n = qr.getModuleCount(), cell = 8, margin = cell * 4;
+            var size = n * cell + margin * 2;
+            var cv = document.createElement('canvas');
+            cv.width = cv.height = size;
+            var ctx = cv.getContext('2d');
+            ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, size, size);
+            ctx.fillStyle = '#000';
+            for (var rr = 0; rr < n; rr++) {
+                for (var cc = 0; cc < n; cc++) {
+                    if (qr.isDark(rr, cc)) ctx.fillRect(margin + cc * cell, margin + rr * cell, cell, cell);
+                }
+            }
+            return cv.toDataURL('image/png');
+        }
 
         // ==========================================
         // PHOTOS
@@ -1501,6 +1648,10 @@
             });
             [['e-photos', 'photos'], ['e-photos-done', 'photosDone'], ['e-photos-gov', 'photosGov']].forEach(function(w) {
                 document.getElementById(w[0]).addEventListener('change', function(e) { handleEditPhotos(e, w[1]); });
+            });
+            ['f', 'e'].forEach(function(px) {
+                var vi = document.getElementById(px + '-video');
+                if (vi) vi.addEventListener('change', function(e) { handleVideoSelect(e, px); });
             });
             populateSupportItemPresets();
             onSupportTypeChange();
@@ -1651,6 +1802,8 @@
                 PH_CATS.forEach(function(cat) { document.getElementById('f-photo-preview' + phSuffix(cat)).innerHTML = ''; });
                 pendingPairs = [];
                 renderPairRows('f');
+                pendingVideo = null;
+                renderVideoInfo('f');
                 document.getElementById('f-upload-progress').style.display = 'none';
             }
         }
@@ -1861,6 +2014,7 @@
                 lines.push('→' + r.work);
                 if (r.area) lines.push('　作業範囲：' + r.area);
                 if (r.bags) lines.push('　回収量：' + r.bags);
+                if (r.video) lines.push('　活動動画（YouTube限定公開）：' + r.video);
                 if (r.memo) lines.push('（' + r.memo + '）');
                 lines.push('');
             });
@@ -2023,6 +2177,8 @@
                 }));
                 btn.textContent = 'スライド生成中...';
 
+                // 動画つきの記録があればQRコード生成ライブラリも用意（失敗してもリンクだけで続行）
+                try { if (recs.some(function(rq) { return rq.video; })) await loadQrLib(); } catch (eQrLib) {}
                 var pptx = new PptxGenJS();
                 pptx.defineLayout({ name: 'W169', width: 10, height: 5.63 });
                 pptx.layout = 'W169';
@@ -2079,6 +2235,17 @@
                         ]);
                     });
                     dv.addTable(rows, { x: 0.45, y: 1.1, w: 9.1, colW: [2.2, 6.9], border: { type: 'solid', color: RP_LINE, pt: 1 }, rowH: 0.45, margin: 0.07 });
+
+                    // ---- 活動動画（QRコード＋リンク） ----
+                    if (r.video) {
+                        var vs = pptx.addSlide();
+                        rpHeader(vs, head + '　活動動画');
+                        vs.addText('スマートフォンでQRコードを読み取るか、下のリンクからご覧ください（YouTube限定公開）。', { x: 0.6, y: 1.15, w: 8.8, h: 0.5, fontSize: 13, fontFace: 'Meiryo', color: RP_INK });
+                        if (window.qrcode) {
+                            try { vs.addImage({ data: makeQrPng(r.video), x: 3.95, y: 1.8, w: 2.1, h: 2.1 }); } catch (eQr2) {}
+                        }
+                        vs.addText(r.video, { x: 0.6, y: 4.2, w: 8.8, h: 0.45, fontSize: 14, fontFace: 'Meiryo', color: '0563C1', underline: true, align: 'center', hyperlink: { url: r.video } });
+                    }
 
                     // ---- 作業前/作業後（1箇所=1スライド、下部に色帯ラベル） ----
                     var pairs = r.pairs || [];
@@ -2305,10 +2472,24 @@
             PH_CATS.forEach(function(cat) { document.getElementById('f-photo-preview' + phSuffix(cat)).innerHTML = ''; });
             pendingPairs = [];
             renderPairRows('f');
+            var vfile = pendingVideo;
+            pendingVideo = null;
+            renderVideoInfo('f');
             toggleAddForm();
-            showToast(totalImgs > 0 ? '記録を追加しました！写真' + totalImgs + '枚は裏で送信中です（閉じても次回に自動再開）' : '記録を追加しました！');
+            var sendNote = [];
+            if (totalImgs > 0) sendNote.push('写真' + totalImgs + '枚');
+            if (vfile) sendNote.push('動画1本');
+            showToast(sendNote.length ? '記録を追加しました！' + sendNote.join('と') + 'は裏で送信中です（閉じても次回に自動再開）' : '記録を追加しました！');
             setTimeout(function() { renderRecords(); updateHeaderCount(); saveToCloud(); }, 0);
 
+            if (vfile) {
+                var vfr = new FileReader();
+                vfr.onload = function() {
+                    upqEnqueue([{ recordId: record.id, target: { type: 'video' }, data: vfr.result, mime: vfile.type || 'video/mp4',
+                        vtitle: 'CleanVibes活動記録 ' + date + ' ' + place, vdesc: work + '\n\nCleanVibes 活動記録アプリより自動投稿' }]);
+                };
+                vfr.readAsDataURL(vfile);
+            }
             if (totalImgs === 0) return;
             // Before/Afterは枠(ラベル)を先に記録へ載せ、写真URLはキューが後から埋める
             var cleanPairs = [];
@@ -2513,6 +2694,7 @@
                     '<div class="card-meta"><div>' + r.work + '</div>' +
                     (r.memo ? '<div style="color:var(--gray-400);font-size:0.8rem;margin-top:4px;">' + r.memo + '</div>' : '') +
                     '<div style="margin-top:6px">' + tags + '</div>' +
+                    (r.video ? '<div style="margin-top:8px;"><a href="' + escAttr(r.video) + '" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;font-weight:700;color:var(--ocean);text-decoration:none;">▶ 活動動画を見る（YouTube）</a></div>' : '') +
                     pairsHtml + photosHtml + '</div></div>';
             }).join('');
         }
@@ -2571,6 +2753,10 @@
             PH_CATS.forEach(function(cat) {
                 editExMemos[cat] = (r[cat] || []).map(function(u) { return (r.photoMemos || {})[u] || ''; });
             });
+            editVideoFile = null;
+            editVideoRemoved = false;
+            editVideoCurrent = r.video || null;
+            renderVideoInfo('e');
             editPendingPhotos = [];
             editPendingPhotosDone = [];
             editPendingPhotosGov = [];
@@ -2658,10 +2844,25 @@
                 });
             });
 
+            if (editVideoRemoved && !editVideoFile) delete record.video;
+            var vfile = editVideoFile;
+            editVideoFile = null;
+
             closeEdit();
-            showToast(totalImgs > 0 ? '記録を更新しました！写真' + totalImgs + '枚は裏で送信中です（閉じても次回に自動再開）' : '記録を更新しました！');
+            var sendNote = [];
+            if (totalImgs > 0) sendNote.push('写真' + totalImgs + '枚');
+            if (vfile) sendNote.push('動画1本');
+            showToast(sendNote.length ? '記録を更新しました！' + sendNote.join('と') + 'は裏で送信中です（閉じても次回に自動再開）' : '記録を更新しました！');
             setTimeout(function() { renderRecords(); updateHeaderCount(); saveToCloud(); }, 0);
             upqEnqueue(items);
+            if (vfile) {
+                var vfr = new FileReader();
+                vfr.onload = function() {
+                    upqEnqueue([{ recordId: record.id, target: { type: 'video' }, data: vfr.result, mime: vfile.type || 'video/mp4',
+                        vtitle: 'CleanVibes活動記録 ' + date + ' ' + place, vdesc: work + '\n\nCleanVibes 活動記録アプリより自動投稿' }]);
+                };
+                vfr.readAsDataURL(vfile);
+            }
         }
 
         // ==========================================
