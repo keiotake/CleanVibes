@@ -1829,7 +1829,15 @@
             var c = document.getElementById('member-checkboxes');
             c.innerHTML = state.members.length === 0
                 ? '<span style="color:var(--gray-400);font-size:.85rem;">まずメンバーを登録してください</span>'
-                : state.members.map(function(m) { return '<label class="checkbox-label"><input type="checkbox" value="' + m + '"> ' + displayName(m) + '</label>'; }).join('');
+                : membersByParticipation().map(function(m) { return '<label class="checkbox-label"><input type="checkbox" value="' + m + '"> ' + displayName(m) + '</label>'; }).join('');
+        }
+
+        // 参加回数の多い順（同数は登録順を維持）。よく参加する人ほど先頭に出す
+        function membersByParticipation() {
+            var counts = getMemberCounts();
+            return state.members.map(function(m, i) { return { m: m, c: counts[m] || 0, i: i }; })
+                .sort(function(a, b) { return b.c - a.c || a.i - b.i; })
+                .map(function(x) { return x.m; });
         }
 
         // ==========================================
@@ -2746,7 +2754,7 @@
             var c = document.getElementById('e-member-checkboxes');
             c.innerHTML = state.members.length === 0
                 ? '<span style="color:var(--gray-400);font-size:.85rem;">メンバーが登録されていません</span>'
-                : state.members.map(function(m) { return '<label class="checkbox-label"><input type="checkbox" value="' + m + '"' + (r.members.includes(m) ? ' checked' : '') + '> ' + displayName(m) + '</label>'; }).join('');
+                : membersByParticipation().map(function(m) { return '<label class="checkbox-label"><input type="checkbox" value="' + m + '"' + (r.members.includes(m) ? ' checked' : '') + '> ' + displayName(m) + '</label>'; }).join('');
             editExistingPhotos = r.photos ? [...r.photos] : [];
             editExistingPhotosDone = r.photosDone ? [...r.photosDone] : [];
             editExistingPhotosGov = r.photosGov ? [...r.photosGov] : [];
