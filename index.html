@@ -2167,7 +2167,9 @@
                 recs.forEach(function(r) {
                     (r.pairs || []).forEach(function(p) { ['before', 'after'].forEach(function(sd) { if (p[sd] && urls.indexOf(p[sd]) === -1) urls.push(p[sd]); }); });
                     PH_CATS.forEach(function(cat) {
-                        (r[cat] || []).slice(0, 4).forEach(function(u) { if (urls.indexOf(u) === -1) urls.push(u); });
+                        // 完成写真はページ繰り越しで全枚数を載せるため上限なしで取得
+                        var arr = (cat === 'photosDone') ? (r[cat] || []) : (r[cat] || []).slice(0, 4);
+                        arr.forEach(function(u) { if (urls.indexOf(u) === -1) urls.push(u); });
                     });
                 });
                 var imgData = new Map(), done = 0;
@@ -2200,8 +2202,7 @@
                 cover.addText('CleanVibes', { x: 0.5, y: 0.95, w: 9, h: 0.65, fontSize: 26, bold: true, color: RP_NAVY, align: 'center', fontFace: 'Meiryo' });
                 cover.addText('活動報告書', { x: 0.5, y: 1.6, w: 9, h: 0.95, fontSize: 36, bold: true, color: RP_INK, align: 'center', fontFace: 'Meiryo' });
                 cover.addShape('line', { x: 3.2, y: 2.75, w: 3.6, h: 0, line: { color: RP_NAVY, width: 1.5 } });
-                var coverTo = getSelectedRecipients().map(function(t) { return t.full + ' 様'; }).join('　／　');
-                cover.addText(coverTo || '伊東市役所 建設課 様', { x: 0.5, y: 2.95, w: 9, h: 0.45, fontSize: coverTo.length > 40 ? 11 : 14, color: RP_INK, align: 'center', fontFace: 'Meiryo' });
+                // 表紙に報告先は記載しない（2026-08 改善依頼）
                 cover.addText('活動日：' + recs.map(function(r) { return fmtDateJP(r.date); }).join('、'), { x: 0.5, y: 3.45, w: 9, h: 0.45, fontSize: 13, color: RP_INK, align: 'center', fontFace: 'Meiryo' });
                 cover.addText('活動時間：5時30分～7時30分', { x: 0.5, y: 3.9, w: 9, h: 0.45, fontSize: 13, color: RP_INK, align: 'center', fontFace: 'Meiryo' });
                 cover.addText('提出日：' + d0.getFullYear() + '年' + (d0.getMonth() + 1) + '月' + d0.getDate() + '日', { x: 0.5, y: 4.45, w: 9, h: 0.4, fontSize: 12, color: RP_GRAY, align: 'center', fontFace: 'Meiryo' });
@@ -2279,40 +2280,56 @@
                     // ---- 活動の様子（枚数に応じて枠を変える。縦写真が小さくならないように、
                     //      1枚なら全面・2枚なら半分ずつ・3〜4枚で2×2グリッド） ----
                     PH_CATS.forEach(function(cat) {
-                        var catUrls = (r[cat] || []).slice(0, 4);
+                        var isGov = (cat === 'photosGov');
+                        var isDone = (cat === 'photosDone');
+                        var catUrls = isDone ? (r[cat] || []) : (r[cat] || []).slice(0, 4);
                         var photos = catUrls.map(function(u) {
                             var d2 = imgData.get(u);
                             return d2 ? { d: d2, memo: (r.photoMemos || {})[u] || '' } : null;
                         }).filter(Boolean);
-                        var isGov = (cat === 'photosGov');
                         if (!photos.length && !(isGov && r.notice)) return;
-                        var gs = pptx.addSlide();
-                        rpHeader(gs, head + '　' + (isGov ? '行政への対応依頼箇所' : PH_LABELS[cat]));
-                        var top = 1.05;
-                        if (isGov && r.notice) {
-                            gs.addText('気づき・危険箇所：' + r.notice, { x: 0.4, y: 0.88, w: 9.2, h: 0.55, fontSize: 12, bold: true, color: RP_NAVY, fontFace: 'Meiryo', valign: 'top' });
-                            top = 1.5;
-                        }
-                        var bottom = 5.35;
-                        var cells;
-                        if (photos.length === 1) {
-                            cells = [[0.4, top, 9.2, bottom - top]];
-                        } else if (photos.length === 2) {
-                            cells = [[0.4, top, 4.5, bottom - top], [5.1, top, 4.5, bottom - top]];
+                        // 完成写真は縦型前提: 左右1枚ずつ・1ページ2枚まで、多い分は次ページへ繰り越し
+                        var pages = [];
+                        if (isDone) {
+                            for (var pp = 0; pp < photos.length; pp += 2) pages.push(photos.slice(pp, pp + 2));
                         } else {
-                            var rowH = (bottom - top - 0.15) / 2;
-                            cells = [[0.4, top, 4.35, rowH], [5.25, top, 4.35, rowH], [0.4, top + rowH + 0.15, 4.35, rowH], [5.25, top + rowH + 0.15, 4.35, rowH]];
+                            pages.push(photos);
                         }
-                        photos.forEach(function(o, qi) {
-                            var pos = cells[qi];
-                            gs.addShape('rect', { x: pos[0], y: pos[1], w: pos[2], h: pos[3], fill: { color: 'F4F6F8' }, line: { color: RP_LINE, width: 1 } });
-                            var capH = o.memo ? 0.34 : 0;
-                            var f2 = rpFit({ x: pos[0] + 0.06, y: pos[1] + 0.06, w: pos[2] - 0.12, h: pos[3] - 0.12 - capH }, o.d.w, o.d.h);
-                            gs.addImage({ data: o.d.data, x: f2.x, y: f2.y, w: f2.w, h: f2.h });
-                            if (o.memo) {
-                                gs.addShape('rect', { x: pos[0], y: pos[1] + pos[3] - 0.34, w: pos[2], h: 0.34, fill: { color: 'FFFFFF' }, line: { color: RP_LINE, width: 0.75 } });
-                                gs.addText(o.memo, { x: pos[0] + 0.08, y: pos[1] + pos[3] - 0.34, w: pos[2] - 0.16, h: 0.34, fontSize: 10, color: RP_INK, fontFace: 'Meiryo', valign: 'middle' });
+                        pages.forEach(function(pagePhotos, pgIdx) {
+                            var gs = pptx.addSlide();
+                            var pageSfx = pages.length > 1 ? '（' + (pgIdx + 1) + '／' + pages.length + '）' : '';
+                            rpHeader(gs, head + '　' + (isGov ? '行政への対応依頼箇所' : PH_LABELS[cat]) + pageSfx);
+                            var top = 1.05;
+                            if (isGov && r.notice && pgIdx === 0) {
+                                gs.addText('気づき・危険箇所：' + r.notice, { x: 0.4, y: 0.88, w: 9.2, h: 0.55, fontSize: 12, bold: true, color: RP_NAVY, fontFace: 'Meiryo', valign: 'top' });
+                                top = 1.5;
                             }
+                            var bottom = 5.35;
+                            var cells;
+                            if (isDone) {
+                                // 縦写真が大きく見えるよう縦いっぱいの枠を左右に。1枚だけの時は中央
+                                cells = pagePhotos.length === 1
+                                    ? [[2.75, top, 4.5, bottom - top]]
+                                    : [[0.4, top, 4.5, bottom - top], [5.1, top, 4.5, bottom - top]];
+                            } else if (pagePhotos.length === 1) {
+                                cells = [[0.4, top, 9.2, bottom - top]];
+                            } else if (pagePhotos.length === 2) {
+                                cells = [[0.4, top, 4.5, bottom - top], [5.1, top, 4.5, bottom - top]];
+                            } else {
+                                var rowH = (bottom - top - 0.15) / 2;
+                                cells = [[0.4, top, 4.35, rowH], [5.25, top, 4.35, rowH], [0.4, top + rowH + 0.15, 4.35, rowH], [5.25, top + rowH + 0.15, 4.35, rowH]];
+                            }
+                            pagePhotos.forEach(function(o, qi) {
+                                var pos = cells[qi];
+                                gs.addShape('rect', { x: pos[0], y: pos[1], w: pos[2], h: pos[3], fill: { color: 'F4F6F8' }, line: { color: RP_LINE, width: 1 } });
+                                var capH = o.memo ? 0.34 : 0;
+                                var f2 = rpFit({ x: pos[0] + 0.06, y: pos[1] + 0.06, w: pos[2] - 0.12, h: pos[3] - 0.12 - capH }, o.d.w, o.d.h);
+                                gs.addImage({ data: o.d.data, x: f2.x, y: f2.y, w: f2.w, h: f2.h });
+                                if (o.memo) {
+                                    gs.addShape('rect', { x: pos[0], y: pos[1] + pos[3] - 0.34, w: pos[2], h: 0.34, fill: { color: 'FFFFFF' }, line: { color: RP_LINE, width: 0.75 } });
+                                    gs.addText(o.memo, { x: pos[0] + 0.08, y: pos[1] + pos[3] - 0.34, w: pos[2] - 0.16, h: 0.34, fontSize: 10, color: RP_INK, fontFace: 'Meiryo', valign: 'middle' });
+                                }
+                            });
                         });
                     });
                 }
