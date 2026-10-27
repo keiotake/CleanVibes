@@ -152,7 +152,7 @@
         .add-toggle-btn:hover, .add-toggle-btn:active { background: var(--sky); border-style: solid; transform: translateY(-1px); box-shadow: var(--shadow-sm); }
         .checkbox-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
         .checkbox-label { display: inline-flex; align-items: center; gap: 5px; background: var(--card); border: 1px solid var(--hair-dark); border-radius: 999px; padding: 8px 16px; cursor: pointer; font-size: 0.88rem; transition: all 0.2s; color: var(--ink-soft); }
-        .checkbox-label:has(input:checked) { border-color: transparent; background: var(--gradient-vivid); color: #fff; font-weight: 700; box-shadow: 0 4px 12px rgba(14,160,230,0.28); }
+        .checkbox-label.checked, .checkbox-label:has(input:checked) { border-color: transparent; background: var(--gradient-vivid); color: #fff; font-weight: 700; box-shadow: 0 4px 12px rgba(14,160,230,0.28); }
         .checkbox-label input { display: none; }
 
         /* === STATS === */
@@ -367,6 +367,8 @@
             .bottom-nav button.active::before { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 28px; height: 3px; border-radius: 0 0 3px 3px; background: var(--gradient-vivid); }
             .bottom-nav button.active .nav-icon { transform: scale(1.12); }
             input, textarea, select { font-size: 1rem; padding: 12px 14px; }
+            /* iPhoneは16px未満の入力欄に触れると画面を拡大し、押す位置がずれて1回目が効かなく見える */
+            .photo-memo-input, .pair-row-head input, #rp-body, #rp-subject, #rp-next { font-size: 16px !important; }
             select { padding-right: 36px; }
             .form-grid { grid-template-columns: 1fr; }
             .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -514,6 +516,10 @@
         .app-footer { max-width: 1080px; margin: 0 auto; padding: 38px 22px 32px; text-align: center; border-top: 1px solid var(--hair); margin-top: 24px; }
         .footer-logo { height: 46px; opacity: 0.6; margin-bottom: 10px; }
         .footer-text { font-size: 0.64rem; color: var(--gray-400); letter-spacing: 0.18em; }
+        /* 指で操作する端末では、タップ後にボタンが浮いたまま残る:hoverの動きを止める */
+        @media (hover: none) {
+            .tab:hover, .card:hover, .btn-primary:hover, .add-toggle-btn:hover, .stat-card:hover, .rank-item:hover, .member-card:hover, .counter-card:hover, .photo-input-btn:hover, .photo-grid img:hover, .heatmap-day:hover, .header-logo:hover { transform: none; }
+        }
     </style>
 </head>
 <body>
@@ -931,12 +937,12 @@
             return n + 'さん';
         }
 
-        // 指定年の延べ参加人数 = 記録上の延べ人数（大竹除く）+ 大竹 + 飛び入り
+        // 指定年の延べ参加人数 = 記録上の延べ人数（大竹も記録どおり数える）+ 飛び入り
+        // 以前は大竹を固定値で足していたため、記録が増えても大竹分が増えず人件費換算が止まって見えた
         function getYearlyParticipantTotal(yearRecords) {
-            var exclude = ['大竹'];
             var n = 0;
-            yearRecords.forEach(function(r) { r.members.forEach(function(m) { if (exclude.indexOf(m) === -1) n++; }); });
-            return n + OHTAKE_2026_COUNT + GUEST_PARTICIPANTS_2026;
+            yearRecords.forEach(function(r) { n += (r.members || []).length; });
+            return n + GUEST_PARTICIPANTS_2026;
         }
 
         // 延べ参加人数 × 1回の活動時間 × 時給 ＝ 人件費換算
@@ -997,6 +1003,7 @@
             return new Promise(function(resolve) {
                 var callbackName = 'gasCallback_' + Date.now();
                 window[callbackName] = function(data) {
+                    clearTimeout(loadTimer);
                     try {
                         if (data && Array.isArray(data.records) && Array.isArray(data.members)) {
                             if (!data.supports) data.supports = [];
@@ -1025,13 +1032,16 @@
                 var script = document.createElement('script');
                 script.src = GAS_URL + '?callback=' + callbackName + '&t=' + Date.now();
                 script.onerror = function() {
+                    clearTimeout(loadTimer);
                     setSyncStatus('error');
-                    showToast('データの読み込みに失敗しました');
+                    showToast('データの読み込みに失敗しました（30秒ごとに自動で再試行します）');
                     if (script.parentNode) document.head.removeChild(script);
                     delete window[callbackName];
                     renderAll();
                     resolve();
                 };
+                // 応答が返らないまま「同期中...」で固まらないよう20秒で見切る
+                var loadTimer = setTimeout(function() { if (window[callbackName]) script.onerror(); }, 20000);
                 document.head.appendChild(script);
             });
         }
@@ -1099,6 +1109,15 @@
             return added;
         }
         async function saveToCloud() {
+            // 起動時の読み込みに失敗したままだと、stateの名簿・支援・経理が空のまま。
+            // ここで保存するとクラウドを空で上書きしてしまうので、端末に控えて保留する
+            // （次に読み込めた時、控えた記録は自動で合流・保存される）
+            if (!_cloudLoaded) {
+                cacheStateLocal();
+                setSyncStatus('error');
+                showToast('⚠️ まだデータを読み込めていないため保存を保留しました。電波の良い所で自動的に保存されます');
+                return false;
+            }
             if (_saveInFlight) { _saveQueued = true; return; }
             _saveInFlight = true;
             cacheStateLocal();
@@ -1143,7 +1162,7 @@
             if (!el) {
                 el = document.createElement('div');
                 el.id = 'bg-upload-badge';
-                el.style.cssText = 'position:fixed;bottom:76px;right:12px;z-index:9999;background:#1a7f4b;color:#fff;padding:10px 14px;border-radius:14px;font-size:0.82rem;box-shadow:0 2px 8px rgba(0,0,0,0.25);display:none;min-width:190px;';
+                el.style.cssText = 'position:fixed;bottom:76px;right:12px;z-index:9999;background:#1a7f4b;color:#fff;padding:10px 14px;border-radius:14px;font-size:0.82rem;box-shadow:0 2px 8px rgba(0,0,0,0.25);display:none;min-width:190px;pointer-events:none;'; // 下のボタンのタップを邪魔しない
                 el.innerHTML = '<div id="bg-upload-text" style="margin-bottom:6px;font-weight:700;"></div>' +
                     '<div style="background:rgba(255,255,255,0.28);border-radius:99px;height:8px;overflow:hidden;">' +
                     '<div id="bg-upload-fill" style="background:#fff;height:100%;width:0%;border-radius:99px;transition:width 0.4s;"></div></div>';
@@ -1407,8 +1426,19 @@
         // iOSはタブをメモリから復元するため、開き直しても読み込みが走らず
         // 古いデータが表示され続ける。アプリに戻った時に最新を取り直す。
         var _lastSync = 0;
+        // 記録の追加フォーム・編集画面・報告書画面のどれかを開いているか
+        function isUserEditing() {
+            var f = document.getElementById('add-form');
+            var em = document.getElementById('edit-modal');
+            var rm = document.getElementById('report-modal');
+            return (f && f.style.display !== 'none') ||
+                   (em && em.style.display === 'flex') ||
+                   (rm && rm.style.display === 'flex');
+        }
         async function softRefresh(force) {
             if (!_cloudLoaded || _saveInFlight || bgUploadCount > 0) return;
+            // 入力の途中で画面を作り直すと、押した部品が消えて1回目が効かなくなるため待つ
+            if (!force && isUserEditing()) return;
             if (!force && Date.now() - _lastSync < 60000) return;
             try {
                 var snap = await fetchCloudSnapshot();
@@ -1794,6 +1824,7 @@
                 var now = new Date();
                 now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
                 document.getElementById('f-date').value = now.toISOString().slice(0, 10);
+                document.getElementById('member-checkboxes').innerHTML = ''; // 開き直したら選択はまっさらから
                 renderMemberCheckboxes();
                 // 前回選んだ写真・ペアが残らないよう全カテゴリを初期化。従来は「作業の様子」
                 // だけ消していたため、閉じて開き直すと完成写真・行政依頼箇所・Before/Afterの
@@ -1822,15 +1853,31 @@
                 c.checked = last.indexOf(c.value) !== -1;
                 if (c.checked) n++;
             });
+            syncChipClasses(document.getElementById('member-checkboxes'));
             showToast('前回の' + n + '名を選択しました');
         }
 
         function renderMemberCheckboxes() {
             var c = document.getElementById('member-checkboxes');
+            // 自動更新などで作り直しても、入力途中のチェックが消えないように引き継ぐ
+            var keep = {};
+            c.querySelectorAll('input:checked').forEach(function(i) { keep[i.value] = 1; });
             c.innerHTML = state.members.length === 0
                 ? '<span style="color:var(--gray-400);font-size:.85rem;">まずメンバーを登録してください</span>'
-                : membersByParticipation().map(function(m) { return '<label class="checkbox-label"><input type="checkbox" value="' + m + '"> ' + displayName(m) + '</label>'; }).join('');
+                : membersByParticipation().map(function(m) { return '<label class="checkbox-label' + (keep[m] ? ' checked' : '') + '"><input type="checkbox" value="' + m + '"' + (keep[m] ? ' checked' : '') + '> ' + displayName(m) + '</label>'; }).join('');
         }
+
+        // 選択の色付けをクラスでも行う（:has 非対応の古いブラウザで「押せていない」ように見えるのを防ぐ）
+        function syncChipClasses(root) {
+            (root || document).querySelectorAll('.checkbox-label input').forEach(function(i) {
+                i.parentNode.classList.toggle('checked', i.checked);
+            });
+        }
+        document.addEventListener('change', function(e) {
+            if (e.target && e.target.matches && e.target.matches('.checkbox-label input')) {
+                e.target.parentNode.classList.toggle('checked', e.target.checked);
+            }
+        });
 
         // 参加回数の多い順（同数は登録順を維持）。よく参加する人ほど先頭に出す
         function membersByParticipation() {
@@ -2494,6 +2541,7 @@
             ['f-date', 'f-place', 'f-work', 'f-memo', 'f-combustible', 'f-soil', 'f-area', 'f-material', 'f-weeding', 'f-notice'].forEach(function(id) { document.getElementById(id).value = ''; });
             setBagSelects('f', '');
             document.querySelectorAll('#member-checkboxes input').forEach(function(c) { c.checked = false; });
+            syncChipClasses(document.getElementById('member-checkboxes'));
             pendingPhotos = []; pendingPhotosDone = []; pendingPhotosGov = [];
             PH_CATS.forEach(function(cat) { document.getElementById('f-photo-preview' + phSuffix(cat)).innerHTML = ''; });
             pendingPairs = [];
@@ -2551,10 +2599,10 @@
             state.records = state.records.filter(function(r) { return r.id !== id; });
             // 墓標に載せて、別端末との合流や端末内バックアップから復活しないようにする
             state.deletedIds = (state.deletedIds || []).concat(id).slice(-300);
-            await saveToCloud();
             renderRecords();
             updateHeaderCount();
             showToast('記録を削除しました');
+            saveToCloud();
         }
 
         // ==========================================
@@ -2772,6 +2820,7 @@
             c.innerHTML = state.members.length === 0
                 ? '<span style="color:var(--gray-400);font-size:.85rem;">メンバーが登録されていません</span>'
                 : membersByParticipation().map(function(m) { return '<label class="checkbox-label"><input type="checkbox" value="' + m + '"' + (r.members.includes(m) ? ' checked' : '') + '> ' + displayName(m) + '</label>'; }).join('');
+            syncChipClasses(c);
             editExistingPhotos = r.photos ? [...r.photos] : [];
             editExistingPhotosDone = r.photosDone ? [...r.photosDone] : [];
             editExistingPhotosGov = r.photosGov ? [...r.photosGov] : [];
@@ -2902,18 +2951,18 @@
             state.members.push(name);
             state.members.sort(function(a, b) { return a.localeCompare(b, 'ja'); });
             inp.value = '';
-            await saveToCloud();
-            renderMembers();
+            renderMembers(); renderMemberCheckboxes();
             showToast(name + ' を追加しました');
+            saveToCloud(); // 画面は即反映し、保存は裏で（待たせると二度押しで重複登録になる）
         }
 
         async function deleteMember(name) {
             if (!checkDeletePassword()) return;
             if (!confirm(name + ' を削除しますか？')) return;
             state.members = state.members.filter(function(m) { return m !== name; });
-            await saveToCloud();
-            renderMembers();
+            renderMembers(); renderMemberCheckboxes();
             showToast(name + ' を削除しました');
+            saveToCloud();
         }
 
         function getMemberCounts() {
@@ -3222,21 +3271,21 @@
             var category = (type === 'money') ? document.getElementById('sp-category').value : document.getElementById('sp-item-category').value;
             if (!state.supports) state.supports = [];
             state.supports.push({ id: Date.now(), name: name, date: date, type: type, value: value, memo: memo, category: category });
-            await saveToCloud();
             renderSupport();
             ['sp-name', 'sp-date', 'sp-value', 'sp-memo'].forEach(function(id) { document.getElementById(id).value = ''; });
             document.getElementById('sp-item-preset').value = '';
             document.getElementById('sp-qty').value = '1';
             showToast('ご支援を記録しました');
+            saveToCloud();
         }
 
         async function deleteSupport(id) {
             if (!checkDeletePassword()) return;
             if (!confirm('この支援記録を削除しますか？')) return;
             state.supports = state.supports.filter(function(s) { return s.id !== id; });
-            await saveToCloud();
             renderSupport();
             showToast('支援記録を削除しました');
+            saveToCloud();
         }
 
         // 支援の集計（助成金 / 寄付金 / 物品応援 / 代表提供 / 行政支給）
@@ -3351,19 +3400,19 @@
             if (!date || isNaN(amount) || amount <= 0 || !category) { showToast('日付・金額・科目は必須です'); return; }
             if (!state.accounting) state.accounting = [];
             state.accounting.push({ id: Date.now(), date: date, type: type, amount: amount, category: category, memo: memo });
-            await saveToCloud();
             renderAccounting();
             ['ac-date', 'ac-amount', 'ac-category', 'ac-memo'].forEach(function(id) { document.getElementById(id).value = ''; });
             showToast('収支を記録しました');
+            saveToCloud();
         }
 
         async function deleteAccounting(id) {
             if (!checkDeletePassword()) return;
             if (!confirm('この収支記録を削除しますか？')) return;
             state.accounting = state.accounting.filter(function(a) { return a.id !== id; });
-            await saveToCloud();
             renderAccounting();
             showToast('収支記録を削除しました');
+            saveToCloud();
         }
 
         function setAccFilter(filter) {
@@ -3439,25 +3488,20 @@
         // ==========================================
         // AUTO SYNC
         // ==========================================
+        // 以前は30秒ごとにクラウドの内容で丸ごと置き換えて全画面を作り直していたため、
+        // 入力中のチェックが消える・押した瞬間に部品が作り直されて効かない・未保存分が
+        // 一時的に消える、といった不具合の元になっていた。合流方式のsoftRefreshに一本化し、
+        // 入力・編集中は止める。
+        var _loadRetrying = false;
         setInterval(function() {
-            var callbackName = 'gasRefresh_' + Date.now();
-            window[callbackName] = function(remote) {
-                try {
-                    if (remote && Array.isArray(remote.records) && JSON.stringify(remote) !== JSON.stringify(state)) {
-                        if (!remote.supports) remote.supports = [];
-                        if (!remote.accounting) remote.accounting = [];
-                        state = remote;
-                        renderAll();
-                        showToast('データを更新しました');
-                    }
-                } catch(e) {}
-                if (script.parentNode) document.head.removeChild(script);
-                delete window[callbackName];
-            };
-            var script = document.createElement('script');
-            script.src = GAS_URL + '?callback=' + callbackName + '&t=' + Date.now();
-            script.onerror = function() { if (script.parentNode) document.head.removeChild(script); delete window[callbackName]; };
-            document.head.appendChild(script);
+            if (document.visibilityState === 'hidden' || isUserEditing()) return;
+            if (!_cloudLoaded) { // 起動時の読み込みに失敗していたら自動で読み込み直す
+                if (_loadRetrying) return;
+                _loadRetrying = true;
+                loadFromCloud().then(function() { _loadRetrying = false; if (_cloudLoaded) upqResume(); });
+                return;
+            }
+            softRefresh();
         }, 30000);
 
         loadFromCloud().then(upqResume);
