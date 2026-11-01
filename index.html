@@ -1974,6 +1974,16 @@
             return '令和' + (r === 1 ? '元' : r) + '年';
         }
 
+        // 報告書の表紙用: 報告する活動日のうち最後の日までの回数を数える
+        // （過去の日の報告書を後から作っても、当時の回数になるように）
+        function rpActivityCounts(recs) {
+            var last = recs.reduce(function(m, r) { var d = String(r.date).slice(0, 10); return d > m ? d : m; }, '');
+            var upto = state.records.filter(function(r) { return String(r.date).slice(0, 10) <= last; });
+            var year = parseInt(last.slice(0, 4), 10);
+            var inYear = upto.filter(function(r) { return String(r.date).slice(0, 4) === last.slice(0, 4); });
+            return { total: upto.length + CLEANVIBES_HISTORY_OFFSET, yearLabel: toWareki(year), yearCount: inYear.length };
+        }
+
         // ==========================================
         // 行政報告（活動日を選んでメール文/パワポを作成）
         // ==========================================
@@ -2250,6 +2260,8 @@
                 cover.addText('活動報告書', { x: 0.5, y: 1.6, w: 9, h: 0.95, fontSize: 36, bold: true, color: RP_INK, align: 'center', fontFace: 'Meiryo' });
                 cover.addShape('line', { x: 3.2, y: 2.75, w: 3.6, h: 0, line: { color: RP_NAVY, width: 1.5 } });
                 // 表紙に報告先は記載しない（2026-08 改善依頼）
+                var ac = rpActivityCounts(recs);
+                cover.addText('団体通算の活動回数：' + ac.total + '回　／　' + ac.yearLabel + 'の活動回数：' + ac.yearCount + '回', { x: 0.5, y: 2.95, w: 9, h: 0.45, fontSize: 15, bold: true, color: RP_NAVY, align: 'center', fontFace: 'Meiryo' });
                 cover.addText('活動日：' + recs.map(function(r) { return fmtDateJP(r.date); }).join('、'), { x: 0.5, y: 3.45, w: 9, h: 0.45, fontSize: 13, color: RP_INK, align: 'center', fontFace: 'Meiryo' });
                 cover.addText('活動時間：5時30分～7時30分', { x: 0.5, y: 3.9, w: 9, h: 0.45, fontSize: 13, color: RP_INK, align: 'center', fontFace: 'Meiryo' });
                 cover.addText('提出日：' + d0.getFullYear() + '年' + (d0.getMonth() + 1) + '月' + d0.getDate() + '日', { x: 0.5, y: 4.45, w: 9, h: 0.4, fontSize: 12, color: RP_GRAY, align: 'center', fontFace: 'Meiryo' });
