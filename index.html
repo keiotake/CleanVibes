@@ -3320,7 +3320,7 @@
                     else item += iv; // 既定は市民の物品応援
                 }
             });
-            return { donors: Object.keys(donors).length, count: supports.length, grant: grant, donation: donation, item: item, rep: rep, gov: gov, grand: grant + donation + item + rep + gov };
+            return { donors: Object.keys(donors).length, count: supports.length, grant: grant, donation: donation, item: item, rep: rep, gov: gov, grand: grant + donation + item + gov };
         }
 
         // 支援サマリーのHTML（年フィルタ可・タイトル可）
@@ -3338,7 +3338,6 @@
                 (t.grant > 0 ? card('¥' + t.grant.toLocaleString(), '助成金') : '') +
                 (t.donation > 0 ? card('¥' + t.donation.toLocaleString(), '寄付金') : '') +
                 (t.item > 0 ? card('¥' + t.item.toLocaleString(), '物品応援（市民・相当額）') : '') +
-                (t.rep > 0 ? card('¥' + t.rep.toLocaleString(), 'メンバー提供私財（相当額）') : '') +
                 (t.gov > 0 ? card('¥' + t.gov.toLocaleString(), '行政支給（相当額）') : '') +
                 card('¥' + t.grand.toLocaleString(), '総額（相当額含む）', 'total') +
                 '</div></div>';
@@ -3347,12 +3346,8 @@
         // 集計タブ用：大口支援の内訳・補足
         function supportDetailNotesHTML() {
             var t = getSupportTotals();
-            if (t.rep <= 0 && t.gov <= 0) return '';
+            if (t.gov <= 0) return '';
             var body = '';
-            if (t.rep > 0) {
-                body += '<p style="margin:0 0 10px;"><strong>■ メンバー提供私財：¥' + t.rep.toLocaleString() + '（あくまで少なく見積もった最低額）</strong><br>' +
-                    '舗装施工用の固まる砂（約800m分）、ゴミ袋、渚公園駐車場の塗料、市内各地の歩道整備用の散水パッチ、その他備品一式。実際の支出はこれを上回ります。</p>';
-            }
             if (t.gov > 0) {
                 body += '<p style="margin:0;"><strong>■ 行政支給（アダプトロード）：¥' + t.gov.toLocaleString() + '（相当額）</strong><br>' +
                     '2024年に締結したアダプトロード協定に基づく静岡県からの物品支給。初年度2024年が約20万円、2025年が約2万円相当の物品支給です。</p>';
